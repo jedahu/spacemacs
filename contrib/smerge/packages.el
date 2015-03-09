@@ -1,7 +1,7 @@
-(defvar smerge-packages '(smerge))
+(defvar smerge-packages '(smerge-mode))
 
-(defun smerge/init-smerge ()
-  (use-package smerge
+(defun smerge/init-smerge-mode ()
+  (use-package smerge-mode
     :defer t
     :config
     (progn
