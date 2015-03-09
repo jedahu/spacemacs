@@ -1,16 +1,20 @@
 ;; -*- mode: dotspacemacs -*-
-;; This file is loaded by Spacemacs at startup.
-;; It must be stored in your home directory.
+
+(setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
 (defun dotspacemacs/layers ()
   "Configuration Layers declaration."
   (setq-default
    ;; List of additional paths where to look for configuration layers.
    ;; Paths must have a trailing slash (ie. `~/.mycontribs/')
-   dotspacemacs-configuration-layer-path '()
+   dotspacemacs-configuration-layer-path
+   `(,(concat user-emacs-directory "personal/"))
    ;; List of configuration layers to load. If it is the symbol `all' instead
    ;; of a list then all discovered layers will be installed.
-   dotspacemacs-configuration-layers '(vim-empty-lines)
+   dotspacemacs-configuration-layers
+   (append
+    '(vim-empty-lines smerge)
+    (when os-mswin? '(mswindows)))
    ;; A list of packages and/or extensions that will not be install and loaded.
    dotspacemacs-excluded-packages '(yasnippet)
    ;; If non-nil spacemacs will delete any orphan packages, i.e. packages that
@@ -34,10 +38,7 @@ before layers configuration."
    ;; Press <SPC> T n to cycle to the next theme in the list (works great
    ;; with 2 themes variants, one dark and one light)
    dotspacemacs-themes '(solarized-dark
-                         solarized-light
-                         leuven
-                         monokai
-                         zenburn)
+                         solarized-light)
    ;; If non nil the cursor color matches the state color.
    dotspacemacs-colorize-cursor-according-to-state t
    ;; Default font. `powerline-scale' allows to quickly tweak the mode-line
