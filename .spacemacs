@@ -13,7 +13,7 @@
    ;; of a list then all discovered layers will be installed.
    dotspacemacs-configuration-layers
    (append
-    '(vim-empty-lines smerge irc csharp haskell)
+    '(vim-empty-lines smerge irc csharp haskell git markdown)
     (when os-mswin? '(mswindows)))
    ;; A list of packages and/or extensions that will not be install and loaded.
    dotspacemacs-excluded-packages '(yasnippet)
