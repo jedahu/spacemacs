@@ -11,14 +11,17 @@
 ;;; License: GPLv3
 
 ;; ---------------------------------------------------------------------------
-;; Prefixes 
+;; Prefixes
 ;; ---------------------------------------------------------------------------
 
+;; We define prefix commands only for the sake of guide-key
 (setq spacemacs/key-binding-prefixes '(("a" .  "applications")
+                                       ("ai" . "applications-irc")
                                        ("as" . "applications-shells")
                                        ("b" .  "buffers")
                                        ("bm" . "buffers-move")
                                        ("c" .  "compile/comments")
+                                       ("C" .  "capture/colors")
                                        ("e" .  "errors")
                                        ("f" .  "files")
                                        ("fe" . "files-emacs/spacemacs")
@@ -36,11 +39,13 @@
                                        ("q" .  "quit")
                                        ("r" .  "registers/rings")
                                        ("s" .  "search/symbol")
+                                       ("sw" .  "search-web")
                                        ("S" .  "spelling")
                                        ("t" .  "toggles")
                                        ("tC" . "toggles-colors")
+                                       ("th" . "toggles-highlight")
                                        ("tm" . "toggles-modeline")
-                                       ("T" .  "themes")
+                                       ("T" .  "toggles/themes")
                                        ("w" .  "windows")
                                        ("wp" . "windows-popup")
                                        ("wS" . "windows-size")
@@ -50,7 +55,7 @@
                                        ("xm" . "text-move")
                                        ("xt" . "text-transpose")
                                        ("xw" . "text-words")
-                                       ("z" .  "z")))
+                                       ("z" .  "zoom")))
 (mapc (lambda (x) (spacemacs/declare-prefix (car x) (cdr x)))
       spacemacs/key-binding-prefixes)
 
@@ -59,13 +64,14 @@
 ;; ---------------------------------------------------------------------------
 
 (ido-mode t)
-(setq ido-enable-flex-matching t) ;; enable fuzzy matching
-(setq ido-save-directory-list-file (concat spacemacs-cache-directory "ido.last"))
+(setq ido-save-directory-list-file (concat spacemacs-cache-directory "ido.last")
+      ;; enable fuzzy matching
+      ido-enable-flex-matching t)
 ;; Auto refresh buffers
 (global-auto-revert-mode 1)
 ;; Also auto refresh dired, but be quiet about it
-(setq global-auto-revert-non-file-buffers t)
-(setq auto-revert-verbose nil)
+(setq global-auto-revert-non-file-buffers t
+      auto-revert-verbose nil)
 ;; activate winner mode use to undo and redo windows layout
 (winner-mode t)
 ;; no beep pleeeeeease ! (and no visual blinking too please)
@@ -92,27 +98,30 @@ It runs `tabulated-list-revert-hook', then calls `tabulated-list-print'."
   ;; (tabulated-list-print t)
   (tabulated-list-print))
 
-;; evilify process-menu
-(add-to-list 'evil-emacs-state-modes 'process-menu-mode)
-(spacemacs|evilify 'process-menu-mode)
-
 ;; Mouse cursor in terminal mode
 (xterm-mouse-mode 1)
+
+;; Highlight and allow to open http link at point in programming buffers
+;; goto-address-prog-mode only highlights links in strings and comments
+(add-hook 'prog-mode-hook 'goto-address-prog-mode)
+
+;; When point is on paranthesis, highlight the matching one
+(show-paren-mode t)
 
 ;; ---------------------------------------------------------------------------
 ;; Edit
 ;; ---------------------------------------------------------------------------
 
+(spacemacs|defvar-company-backends emacs-lisp-mode)
 ;; start scratch in text mode (usefull to get a faster Emacs load time
 ;; because it avoids autoloads of elisp modes)
 (setq initial-major-mode 'text-mode)
 ;; whitespace-mode
 (add-hook 'prog-mode-hook (lambda () (setq show-trailing-whitespace 1)))
-;; When point is on paranthesis, highlight the matching one
-(show-paren-mode t)
+
 ;; use only spaces and no tabs
-(setq-default indent-tabs-mode nil)
-(setq default-tab-width 2)
+(setq-default indent-tabs-mode nil
+              default-tab-width 2)
 ;; turn on electric-indent-mode for both 24.3 and 24.4
 (electric-indent-mode)
 ;; Text
@@ -131,6 +140,16 @@ Can be installed with `brew install trash'."
         (call-process (executable-find "trash") nil 0 nil file))
     ;; regular move to trash directory
     (setq trash-directory "~/.Trash/emacs")))
+
+;; auto fill breaks line beyond current-fill-column
+(setq-default default-fill-column 80)
+(spacemacs|diminish auto-fill-function " Ⓕ" " F")
+
+;; persistent abbreviation file
+(setq abbrev-file-name (concat spacemacs-cache-directory "abbrev_defs"))
+
+;; Save clipboard contents into kill-ring before replace them
+(setq save-interprogram-paste-before-kill t)
 
 ;; ---------------------------------------------------------------------------
 ;; UI
@@ -158,6 +177,11 @@ Can be installed with `brew install trash'."
 ;;           (lambda ()
 ;;             (set-window-margins (car (get-buffer-window-list (current-buffer) nil t)) 0 0)))
 
+;; don't let the cursor go into minibuffer prompt
+;; Tip taken from Xah Lee: http://ergoemacs.org/emacs/emacs_stop_cursor_enter_prompt.html
+(setq minibuffer-prompt-properties
+      '(read-only t point-entered minibuffer-avoid-prompt face minibuffer-prompt))
+
 ;; Emacs 24.4 new features
 (unless (version< emacs-version "24.4")
   (if dotspacemacs-fullscreen-at-startup
@@ -173,22 +197,24 @@ Can be installed with `brew install trash'."
 (setq custom-file (dotspacemacs/location))
 ;; scratch buffer empty
 (setq initial-scratch-message nil)
-(setq redisplay-dont-pause t)
 ;; don't create backup~ or #auto-save# files
-(setq backup-by-copying t)
-(setq make-backup-files nil)
-(setq auto-save-default nil)
-(setq create-lockfiles nil)
+(setq backup-by-copying t
+      make-backup-files nil
+      auto-save-default nil
+      create-lockfiles nil)
 (require 'uniquify)
 ;; When having windows with repeated filenames, uniquify them
 ;; by the folder they are in rather those annoying <2>,<3>,.. etc
-(setq uniquify-buffer-name-style 'post-forward-angle-brackets)
-; don't screw special buffers
-(setq uniquify-ignore-buffers-re "^\\*")
+(setq uniquify-buffer-name-style 'post-forward-angle-brackets
+      ;; don't screw special buffers
+      uniquify-ignore-buffers-re "^\\*")
+;; remove annoying ellipsis when printing sexp in message buffer
+(setq eval-expression-print-length nil
+      eval-expression-print-level nil)
 ;; Save point position between sessions
 (require 'saveplace)
-(setq-default save-place t)
-(setq save-place-file (concat spacemacs-cache-directory "places"))
+(setq-default save-place t
+              save-place-file (concat spacemacs-cache-directory "places"))
 
 ;; minibuffer history
 (require 'savehist)
@@ -199,7 +225,7 @@ Can be installed with `brew install trash'."
       savehist-autosave-interval 60)
 (savehist-mode +1)
 
-;; auto-save 
+;; auto-save
 (let
     ((autosave-dir (expand-file-name (concat spacemacs-cache-directory "autosave"))))
   (unless (file-exists-p autosave-dir)
@@ -207,21 +233,31 @@ Can be installed with `brew install trash'."
   (setq auto-save-list-file-prefix (concat autosave-dir "/")
         auto-save-file-name-transforms `((".*" ,autosave-dir t))))
 
+;; cache files
 ;; bookmarks
-(setq bookmark-save-flag 1) ;; save after every change
-(setq bookmark-default-file (concat spacemacs-cache-directory "bookmarks"))
-
-;; more cache files
-
-;; url files
-(setq url-configuration-directory (concat spacemacs-cache-directory "url"))
-;; eshell files
-(setq eshell-directory-name (concat spacemacs-cache-directory "eshell" ))
-;; Tramp history
-(setq tramp-persistency-file-name (concat spacemacs-cache-directory "tramp"))
+(setq bookmark-default-file (concat spacemacs-cache-directory "bookmarks")
+      ;; save after every change
+      bookmark-save-flag 1
+      url-configuration-directory (concat spacemacs-cache-directory "url")
+      eshell-directory-name (concat spacemacs-cache-directory "eshell" )
+      tramp-persistency-file-name (concat spacemacs-cache-directory "tramp"))
 
 ;; increase memory threshold for GC
 (setq gc-cons-threshold 20000000)
+
+;; seems pointless to warn. There's always undo.
+(put 'narrow-to-region 'disabled nil)
+(put 'upcase-region 'disabled nil)
+(put 'downcase-region 'disabled nil)
+(put 'erase-buffer 'disabled nil)
+(put 'scroll-left 'disabled nil)
+(put 'dired-find-alternate-file 'disabled nil)
+;; remove prompt if the file is opened in other clients
+(defun server-remove-kill-buffer-hook ()
+  (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function))
+(add-hook 'server-visit-hook 'server-remove-kill-buffer-hook)
+
+;; The following code is kept as reference -----------------------------------
 
 ;; ;; save a bunch of variables to the desktop file
 ;; ;; for lists specify the len of the maximal saved data also
@@ -311,15 +347,3 @@ Can be installed with `brew install trash'."
 ;;             ;;     (new-empty-buffer))
 ;;             )
 ;;           t) ;; append this hook to the tail
-
-;; seems pointless to warn. There's always undo.
-(put 'narrow-to-region 'disabled nil)
-(put 'upcase-region 'disabled nil)
-(put 'downcase-region 'disabled nil)
-(put 'erase-buffer 'disabled nil)
-(put 'scroll-left 'disabled nil)
-(put 'dired-find-alternate-file 'disabled nil)
-;; remove prompt if the file is opened in other clients
-(defun server-remove-kill-buffer-hook ()
-  (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function))
-(add-hook 'server-visit-hook 'server-remove-kill-buffer-hook)

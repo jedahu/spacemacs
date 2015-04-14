@@ -10,11 +10,14 @@
 ;;; License: GPLv3
 
 ;; Variables
+
+(spacemacs|defvar-company-backends haskell-mode)
+
 (defvar haskell-enable-ghci-ng-support nil
   "If non-nil ghci-ng support is enabled")
 
 (defvar haskell-enable-shm-support nil
   "If non-nil structured-haskell-mode support is enabled")
 
-(defvar haskell-enable-hindent-support nil
+(defvar haskell-enable-hindent-style nil
   "If non-nil structured-haskell-mode support is enabled")

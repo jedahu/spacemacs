@@ -13,15 +13,26 @@
   (expand-file-name (concat spacemacs-core-directory "templates/"))
   "Templates directory.")
 
+(defconst dotspacemacs-filepath "~/.spacemacs"
+  "Filepath to the installed dotfile.")
+
+(defvar dotspacemacs-verbose-loading nil
+  "If non nil output loading progess in `*Messages*' buffer.")
+
 (defvar dotspacemacs-configuration-layer-path '()
   "List of additional paths where to look for configuration layers.
 Paths must have a trailing slash (ie. `~/.mycontribs/')")
 
-(defvar dotspacemacs-startup-banner 'random
-  "Specify the startup banner. If the value is an integer then the
-banner with the corresponding index is used, if the value is `random'
-then the banner is chosen randomly among the available banners, if
-the value is nil then no banner is displayed.")
+(defvar dotspacemacs-editing-style 'vim
+  "Either `vim' or `emacs'. Evil is always enabled but if the variable
+is `emacs' then the `holy-mode' is enabled at startup.")
+
+(defvar dotspacemacs-startup-banner 'official
+   "Specify the startup banner. Default value is `official', it displays
+the official spacemacs logo. An integer value is the index of text
+banner, `random' chooses a random text banner in `core/banners'
+directory. A string value must be a path to a .PNG file.
+If the value is nil then no banner is displayed.")
 
 (defvar dotspacemacs-configuration-layers '()
   "List of configuration layers to load. If it is the symbol `all' instead
@@ -42,9 +53,15 @@ with 2 themes variants, one dark and one light")
 (defvar dotspacemacs-leader-key "SPC"
   "The leader key.")
 
+(defvar dotspacemacs-emacs-leader-key "M-m"
+  "The leader key accessible in `emacs state' and `insert state'")
+
 (defvar dotspacemacs-major-mode-leader-key ","
   "Major mode leader key is a shortcut key which is the equivalent of
-pressing `<leader> m`")
+pressing `<leader> m`. Set it to `nil` to disable it.")
+
+(defvar dotspacemacs-major-mode-emacs-leader-key "C-M-m"
+  "Major mode leader key accessible in `emacs state' and `insert state'")
 
 (defvar dotspacemacs-default-font '("Source Code Pro"
                                     :size 13
@@ -58,6 +75,10 @@ size to make separators look not too crappy.")
   "The key used for Evil commands (ex-commands) and Emacs commands (M-x).
 By default the command key is `:' so ex-commands are executed like in Vim
 with `:' and Emacs commands are executed with `<leader> :'.")
+
+(defvar dotspacemacs-enable-paste-micro-state t
+  "If non nil the paste micro-state is enabled. While enabled pressing `p`
+several times cycle between the kill ring content.'")
 
 (defvar dotspacemacs-guide-key-delay 0.4
   "Guide-key delay in seconds.")
@@ -112,6 +133,10 @@ declared in a layer which is not a member of
 specified with an installed package.
 NOT USED FOR NOW :-)")
 
+(defvar dotspacemacs-startup-lists '(recents projects)
+  "List of items to show in the startup buffer. If nil it is disabled.
+Possible values are: `recents' `bookmarks' `projects'.")
+
 (defvar dotspacemacs-excluded-packages '()
   "A list of packages and/or extensions that will not be install and loaded.")
 
@@ -135,43 +160,94 @@ NOT USED FOR NOW :-)")
             evil-leader--mode-maps)))
   ;; then define additional leader key bindings
   (evil-leader/set-key-for-mode 'dotspacemacs-mode
-    "mcc" 'dotspacemacs/sync-configuration-layers)
-  (run-at-time
-   "2 sec" nil
-   (lambda () (message "SPC m c c (or C-c C-c) to apply your changes."))))
+    "mcc" 'dotspacemacs/sync-configuration-layers))
 
-(defun dotspacemacs/sync-configuration-layers (arg)
+(defun dotspacemacs/sync-configuration-layers (&optional arg)
   "Synchronize declared layers in dotfile with spacemacs.
 
 If ARG is non nil then `dotspacemacs/config' is skipped."
   (interactive "P")
-  (let ((dotspacemacs-loading-progress-bar nil))
-    (load-file buffer-file-name)
-    (dotspacemacs|call-func dotspacemacs/init "Calling dotfile init...")
-    (configuration-layer/sync)
-    (if arg
-        (message "Done (`dotspacemacs/config' function has been skipped).")
-      (dotspacemacs|call-func dotspacemacs/config "Calling dotfile config...")
-      (message "Done."))))
+  (when (file-exists-p dotspacemacs-filepath)
+    (with-current-buffer (find-file-noselect dotspacemacs-filepath)
+      (let ((dotspacemacs-loading-progress-bar nil))
+        (setq spacemacs-loading-string "")
+        (save-buffer)
+        (load-file buffer-file-name)
+        (dotspacemacs|call-func dotspacemacs/init "Calling dotfile init...")
+        (configuration-layer/sync)
+        (if arg
+            (message "Done (`dotspacemacs/config' function has been skipped).")
+          (dotspacemacs|call-func dotspacemacs/config
+                                  "Calling dotfile config...")
+          (message "Done."))
+        (when (configuration-layer/package-usedp 'powerline)
+          (spacemacs//restore-powerline (current-buffer)))))))
 
 (defun dotspacemacs/location ()
   "Return the absolute path to the spacemacs dotfile."
   (concat user-home-directory ".spacemacs"))
 
-(defun dotspacemacs/install ()
-  "Install `.spacemacs.template' in home directory. Ask for confirmation
-before installing the file if the destination already exists."
+(defun dotspacemacs/copy-template ()
+  "Copy `.spacemacs.template' in home directory. Ask for confirmation
+before copying the file if the destination already exists."
   (interactive)
-  (let* ((dotfile "~/.spacemacs")
-         (install
-          (if (file-exists-p dotfile)
-              (y-or-n-p
-               (format "%s already exists. Do you want to overwite it ? "
-                       dotfile)) t)))
-    (when install
+  (let* ((copy? (if (file-exists-p dotspacemacs-filepath)
+                    (y-or-n-p
+                     (format "%s already exists. Do you want to overwite it ? "
+                             dotspacemacs-filepath)) t)))
+    (when copy?
       (copy-file (concat dotspacemacs-template-directory
-                         ".spacemacs.template") dotfile t)
-      (message "%s has been installed." dotfile))))
+                         ".spacemacs.template") dotspacemacs-filepath t)
+      (message "%s has been installed." dotspacemacs-filepath))))
+
+(defun dotspacemacs//ido-completing-read (prompt candidates)
+  "Call `ido-completing-read' with a CANDIDATES alist where the key is
+a display strng and the value is the actual value to return."
+  (let ((ido-max-window-height (1+ (length candidates))))
+    (cadr (assoc (ido-completing-read prompt (mapcar 'car candidates))
+                 candidates))))
+
+(defun dotspacemacs/install (arg)
+  "Install the dotfile, return non nil if the doftile has been installed.
+
+If ARG is non nil then Ask questions to the user before installing the dotfile."
+  (interactive "P")
+  ;; preferences is an alist where the key is the text to replace by
+  ;; the value in the dotfile
+  (let ((preferences
+         (when arg
+           ;; editing style
+           `(("dotspacemacs-editing-style 'vim"
+              ,(format "dotspacemacs-editing-style '%S"
+                       (dotspacemacs//ido-completing-read
+                        "What is your preferred style? "
+                        '(("Among the stars aboard the Evil flagship (vim)"
+                           vim)
+                          ("On the planet Emacs in the Holy control tower (emacs)"
+                           emacs)))))))))
+    (with-current-buffer (find-file-noselect
+                       (concat dotspacemacs-template-directory
+                               ".spacemacs.template"))
+      (dolist (p preferences)
+        (beginning-of-buffer)
+        (re-search-forward (car p))
+        (replace-match (cadr p)))
+      (let ((install
+             (if (file-exists-p dotspacemacs-filepath)
+                 (y-or-n-p
+                  (format "%s already exists. Do you want to overwite it ? "
+                          dotspacemacs-filepath)) t)))
+        (when install
+          (write-file dotspacemacs-filepath)
+          (message "%s has been installed." dotspacemacs-filepath)
+          t)))))
+
+(defun dotspacemacs//install-and-replace (&optional values)
+  "Install the dotfile and replace its content according to VALUES.
+
+VALUES is an alist where the key is the text to replace and value is the new
+value."
+  )
 
 (defun dotspacemacs/load-file ()
   "Load ~/.spacemacs if it exists."
@@ -182,7 +258,7 @@ before installing the file if the destination already exists."
   "Call the function from the dotfile only if it is bound.
 If MSG is not nil then display a message in `*Messages'."
   `(progn
-     (when ,msg (spacemacs/message ,msg))
+     (when ,msg (spacemacs-buffer/message ,msg))
      (if (fboundp ',func) (,func))))
 
 (provide 'core-dotspacemacs)

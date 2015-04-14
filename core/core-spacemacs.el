@@ -14,6 +14,7 @@
 
 (require 'subr-x nil 'noerror)
 (require 'core-emacs-backports)
+(require 'core-auto-completion)
 (require 'core-themes-support)
 (require 'core-fonts-support)
 (require 'core-spacemacs-buffer)
@@ -45,19 +46,16 @@
   "Text displayed in the mode-line when a new version is available.")
 
 ;; loading progress bar variables
-(defvar spacemacs-title-length 75)
+(defvar spacemacs-loading-char ?█)
+(defvar spacemacs-loading-string "")
 (defvar spacemacs-loading-counter 0)
-(defvar spacemacs-loading-text "Loading")
-(defvar spacemacs-loading-done-text "Ready!")
+;; (defvar spacemacs-loading-text "Loading")
+;; (defvar spacemacs-loading-done-text "Ready!")
 (defvar spacemacs-loading-dots-chunk-count 3)
-(defvar spacemacs-loading-dots-count
-  (- spacemacs-title-length
-     (length spacemacs-loading-text)
-     (length spacemacs-loading-done-text)))
+(defvar spacemacs-loading-dots-count (window-total-size nil 'width))
 (defvar spacemacs-loading-dots-chunk-size
   (/ spacemacs-loading-dots-count spacemacs-loading-dots-chunk-count))
 (defvar spacemacs-loading-dots-chunk-threshold 0)
-(defvar spacemacs-solarized-dark-createdp nil)
 
 (define-derived-mode spacemacs-mode special-mode "Spacemacs"
   "Spacemacs major mode for startup screen."
@@ -71,11 +69,15 @@
 (defun spacemacs/init ()
   "Create the special buffer for `spacemacs-mode' and perform startup
 initialization."
+  ;; explicitly set the prefered coding systems to avoid annoying prompt
+  ;; from emacs (especially on Microsoft Windows)
+  (prefer-coding-system 'utf-8)
   ;; dotfile init
   (dotspacemacs/load-file)
   (dotspacemacs|call-func dotspacemacs/init "Calling dotfile init...")
   ;; spacemacs init
   (switch-to-buffer (get-buffer-create spacemacs-buffer-name))
+  (spacemacs-buffer/set-mode-line "")
   ;; no welcome buffer
   (setq inhibit-startup-screen t)
   ;; default theme
@@ -83,32 +85,30 @@ initialization."
     (spacemacs/load-theme default-theme)
     (setq-default spacemacs--cur-theme default-theme)
     (setq-default spacemacs--cycle-themes (cdr dotspacemacs-themes)))
-  ;; remove GUI elements if supported
-  (when window-system
-    ;; those unless tests are for the case when the user has a ~/.emacs file
-    ;; were he/she ;; removes the GUI elements
-    (unless (eq tool-bar-mode -1)
-      (tool-bar-mode -1))
-    (unless (eq scroll-bar-mode -1)
-      (scroll-bar-mode -1))
-    ;; tooltips in echo-aera
-    (unless (eq tooltip-mode -1)
-      (tooltip-mode -1))
-    (setq tooltip-use-echo-area t))
+  ;; removes the GUI elements
+  (when (and (fboundp 'tool-bar-mode) (not (eq tool-bar-mode -1)))
+    (tool-bar-mode -1))
+  (when (and (fboundp 'scroll-bar-mode) (not (eq scroll-bar-mode -1)))
+    (scroll-bar-mode -1))
+  ;; tooltips in echo-aera
+  (when (and (fboundp 'tooltip-mode) (not (eq tooltip-mode -1)))
+    (tooltip-mode -1))
+  (setq tooltip-use-echo-area t)
   (unless (eq window-system 'mac)
-    (menu-bar-mode -1))
+    (when (and (fboundp 'menu-bar-mode) (not (eq menu-bar-mode -1)))
+      (menu-bar-mode -1)))
   ;; for convenience and user support
-  (unless (boundp 'tool-bar-mode)
-    (spacemacs/message (concat "No graphical support detected, you won't be"
+  (unless (fboundp 'tool-bar-mode)
+    (spacemacs-buffer/message (concat "No graphical support detected, you won't be"
                                "able to launch a graphical instance of Emacs"
                                "with this build.")))
   ;; font
   (if (find-font (font-spec :name (car dotspacemacs-default-font)))
       (spacemacs/set-default-font dotspacemacs-default-font)
-    (spacemacs/message "Warning: Cannot find font \"%s\"!"
-                       (car dotspacemacs-default-font)))
+    (spacemacs-buffer/warning "Cannot find font \"%s\"!"
+                              (car dotspacemacs-default-font)))
   ;; banner
-  (spacemacs//insert-banner)
+  (spacemacs-buffer/insert-banner-and-buttons)
   (setq-default evil-want-C-u-scroll t)
   ;; Initializing configuration from ~/.spacemacs
   (dotspacemacs|call-func dotspacemacs/init "Executing user init...")
@@ -117,15 +117,16 @@ initialization."
   ;; bind-key is required by use-package
   (spacemacs/load-or-install-package 'bind-key t)
   (spacemacs/load-or-install-package 'use-package t)
-  ;; evil and evil-leader must be installed at the beginning of the boot sequence
-  ;; use C-u as scroll-up (must be set before actually loading evil)
+  ;; evil and evil-leader must be installed at the beginning of the
+  ;; boot sequence.
+  ;; Use C-u as scroll-up (must be set before actually loading evil)
   (spacemacs/load-or-install-package 'evil t)
   (spacemacs/load-or-install-package 'evil-leader t)
   ;; check for new version
   (if dotspacemacs-mode-line-unicode-symbols
       (setq-default spacemacs-version-check-lighter "[⇪]"))
   (spacemacs/set-new-version-lighter-mode-line-faces)
-  (add-hook 'after-init-hook 'spacemacs/goto-link-line)
+  (add-hook 'after-init-hook 'spacemacs-buffer/goto-link-line)
   (spacemacs-mode))
 
 (defun spacemacs//get-package-directory (pkg)
@@ -135,7 +136,9 @@ initialization."
       (let ((dir (reduce (lambda (x y) (if x x y))
                          (mapcar (lambda (x)
                                    (if (string-match
-                                        (concat "/" (symbol-name pkg) "-") x) x))
+                                        (concat "/"
+                                                (symbol-name pkg)
+                                                "-[0-9]+") x) x))
                                  (directory-files elpa-dir 'full))
                          :initial-value nil)))
         (if dir (file-name-as-directory dir))))))
@@ -157,7 +160,7 @@ FILE-TO-LOAD is an explicit file to load after the installation."
            (add-to-list 'load-path pkg-elpa-dir)
          ;; install the package
          (when log
-           (spacemacs/append-to-buffer
+           (spacemacs-buffer/append
             (format "(Bootstrap) Installing %s...\n" pkg))
            (spacemacs//redisplay))
          (package-refresh-contents)
@@ -167,6 +170,16 @@ FILE-TO-LOAD is an explicit file to load after the installation."
        (when file-to-load
          (load-file (concat pkg-elpa-dir file-to-load)))
        pkg-elpa-dir))))
+
+(defun spacemacs/maybe-install-dotfile ()
+  "Install the dotfile if it does not exist."
+  (unless (file-exists-p dotspacemacs-filepath)
+    (spacemacs-buffer/set-mode-line "Dotfile wizard installer")
+    (spacemacs//redisplay)
+    (when (dotspacemacs/install 'with-wizard)
+      (dotspacemacs/sync-configuration-layers)
+      (spacemacs-buffer/append
+       "The dofile has been installed.\n"))))
 
 (defun spacemacs/display-and-copy-version ()
   "Echo the current spacemacs version and copy it."
@@ -326,16 +339,26 @@ version and the NEW version."
      ;; Ultimate configuration decisions are given to the user who can defined
      ;; them in his/her ~/.spacemacs file
      (dotspacemacs|call-func dotspacemacs/config "Calling dotfile config...")
-     (when dotspacemacs-loading-progress-bar
-       (spacemacs/append-to-buffer (format "%s\n" spacemacs-loading-done-text)))
      ;; from jwiegley
      ;; https://github.com/jwiegley/dot-emacs/blob/master/init.el
      (let ((elapsed (float-time
                      (time-subtract (current-time) emacs-start-time))))
-       (spacemacs/append-to-buffer
-        (format "[%s packages loaded in %.3fs]\n"
+       (spacemacs-buffer/append
+        (format "\n[%s packages loaded in %.3fs]\n"
                 (configuration-layer//initialized-packages-count)
                 elapsed)))
+     ;; Display useful lists of items
+     (when dotspacemacs-startup-lists
+       (spacemacs-buffer/insert-startupify-lists))
+     (when configuration-layer-error-count
+       ;; ("%e" mode-line-front-space mode-line-mule-info mode-line-client mode-line-modified mode-line-remote mode-line-frame-identification mode-line-buffer-identification "   " mode-line-position evil-mode-line-tag
+        ;; (vc-mode vc-mode)
+       ;; "  " mode-line-modes mode-line-misc-info mode-line-end-spaces
+       (spacemacs-buffer/set-mode-line
+        (format (concat "%s error(s) at startup! "
+                        "Spacemacs may not be able to operate properly.")
+                configuration-layer-error-count))
+       (force-mode-line-update))
      (spacemacs/check-for-new-version spacemacs-version-check-interval))))
 
 (provide 'core-spacemacs)
