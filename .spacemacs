@@ -13,7 +13,24 @@
    ;; of a list then all discovered layers will be installed.
    dotspacemacs-configuration-layers
    (append
-    '(vim-empty-lines smerge irc csharp haskell git markdown revealjs)
+    '(
+      csharp
+      evil-commentary
+      extra-langs
+      fsharp
+      git
+      haskell
+      irc
+      javascript
+      markdown
+      org
+      restclient
+      revealjs
+      shell-scripts
+      smerge
+      syntax-checking
+      vim-empty-lines
+      )
     (when os-mswin? '(mswindows)))
    ;; A list of packages and/or extensions that will not be install and loaded.
    dotspacemacs-excluded-packages '(yasnippet)
