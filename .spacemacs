@@ -13,7 +13,7 @@
    ;; of a list then all discovered layers will be installed.
    dotspacemacs-configuration-layers
    (append
-    '(vim-empty-lines smerge irc)
+    '(vim-empty-lines smerge irc csharp haskell git markdown revealjs)
     (when os-mswin? '(mswindows)))
    ;; A list of packages and/or extensions that will not be install and loaded.
    dotspacemacs-excluded-packages '(yasnippet)
@@ -104,7 +104,25 @@ before layers configuration."
   "Configuration function.
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
-  (setq powerline-default-separator nil))
+  (setq
+   powerline-default-separator nil
+   markdown-css-path "markdown.css"
+   markdown-hr-strings (list
+                        (make-string 80 ?-)
+                        (string-trim-right
+                         (apply 'concat (make-list 40 "- ")))))
+
+  (defun save-all ()
+    (interactive)
+    (save-some-buffers t))
+
+  (add-hook 'focus-out-hook 'save-all)
+
+  (use-package markdown-mode
+    :defer t
+    :config
+    (progn
+      (set-face-attribute 'markdown-comment-face nil :strike-through nil))))
 
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
