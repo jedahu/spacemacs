@@ -24,11 +24,13 @@
       javascript
       markdown
       org
+      persistent-packages
       restclient
       revealjs
       shell-scripts
       smerge
       syntax-checking
+      text
       vim-empty-lines
       )
     (when os-mswin? '(mswindows)))
@@ -122,18 +124,28 @@ before layers configuration."
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
   (setq
-   powerline-default-separator nil
+   auto-save-default t
+   auto-save-interval 300
+   auto-save-timeout 10
+   auto-save-visited-file-name t
    markdown-css-path "markdown.css"
    markdown-hr-strings (list
                         (make-string 80 ?-)
                         (string-trim-right
-                         (apply 'concat (make-list 40 "- ")))))
+                         (apply 'concat (make-list 40 "- "))))
+   mouse-wheel-follow-mouse t
+   mouse-wheel-progressive-speed t
+   mouse-wheel-scroll-amount '(1 ((shift) . 1))
+   powerline-default-separator nil
+   )
 
   (defun save-all ()
     (interactive)
     (save-some-buffers t))
 
   (add-hook 'focus-out-hook 'save-all)
+
+  (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
 
   (use-package markdown-mode
     :defer t
