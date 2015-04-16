@@ -1,3 +1,8 @@
+(defmacro ilambda (args &rest body)
+  `(lambda ,args
+     (interactive)
+     ,@body))
+
 (defun end-of-chunk ()
   "forward line or to ends of mid-expression."
   (interactive)

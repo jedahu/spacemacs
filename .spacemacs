@@ -14,6 +14,7 @@
    dotspacemacs-configuration-layers
    (append
     '(
+      auto-completion
       csharp
       evil-commentary
       extra-langs
@@ -22,15 +23,14 @@
       haskell
       irc
       javascript
+      jedahu
       markdown
       org
-      persistent-packages
       restclient
       revealjs
       shell-scripts
       smerge
       syntax-checking
-      text
       vim-empty-lines
       )
     (when os-mswin? '(mswindows)))
@@ -128,6 +128,7 @@ layers configuration."
    auto-save-interval 300
    auto-save-timeout 10
    auto-save-visited-file-name t
+   fsharp-build-command "msbuild"
    markdown-css-path "markdown.css"
    markdown-hr-strings (list
                         (make-string 80 ?-)
@@ -137,7 +138,18 @@ layers configuration."
    mouse-wheel-progressive-speed t
    mouse-wheel-scroll-amount '(1 ((shift) . 1))
    powerline-default-separator nil
+   projectile-switch-project-action (ilambda ())
    )
+
+  (when os-mswin?
+    (setq
+     tramp-default-method "plink"
+     ))
+
+  (defun find-contrib-file ()
+    (interactive)
+    "Edit the `file' in the spacemacs base directory, in the current window."
+    (helm-find-files-1 configuration-layer-contrib-directory))
 
   (defun save-all ()
     (interactive)
