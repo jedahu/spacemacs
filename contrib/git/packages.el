@@ -43,7 +43,7 @@ which require an initialization must be listed explicitly in the list.")
     :defer t
     :init
     (progn
-      (evilify gist-list-menu-mode gist-list-menu-mode-map
+      (evilify gist-list-mode gist-list-menu-mode-map
                "f" 'gist-fetch-current
                "K" 'gist-kill-current
                "o" 'gist-browse-current-url)
