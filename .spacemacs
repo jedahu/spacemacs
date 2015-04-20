@@ -128,6 +128,7 @@ layers configuration."
    auto-save-interval 300
    auto-save-timeout 10
    auto-save-visited-file-name t
+   compilation-ask-about-save nil
    fsharp-build-command "msbuild"
    markdown-css-path "markdown.css"
    markdown-hr-strings (list
@@ -138,7 +139,7 @@ layers configuration."
    mouse-wheel-progressive-speed t
    mouse-wheel-scroll-amount '(1 ((shift) . 1))
    powerline-default-separator nil
-   projectile-switch-project-action (ilambda ())
+   projectile-switch-project-action #'(lambda () (eshell t))
    )
 
   (when os-mswin?
@@ -167,3 +168,36 @@ layers configuration."
 
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(ahs-case-fold-search nil)
+ '(ahs-default-range (quote ahs-range-whole-buffer))
+ '(ahs-idle-interval 0.25)
+ '(ahs-idle-timer 0 t)
+ '(ahs-inhibit-face-list nil)
+ '(magit-use-overlays nil)
+ '(ring-bell-function (quote ignore) t)
+ '(safe-local-variable-values
+   (quote
+    ((eval progn
+           (require
+            (quote projectile))
+           (puthash
+            (projectile-project-root)
+            "msbuild /nologo /verbosity:quiet /m" projectile-compilation-cmd-map))
+     (eval progn
+           (require
+            (quote projectile))
+           (puthash
+            (projectile-project-root)
+            "msbuild /m" projectile-compilation-cmd-map))))))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(company-tooltip-common ((t (:inherit company-tooltip :weight bold :underline nil))))
+ '(company-tooltip-common-selection ((t (:inherit company-tooltip-selection :weight bold :underline nil)))))

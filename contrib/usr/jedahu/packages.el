@@ -1,6 +1,7 @@
 (defvar jedahu-packages
   '(
     ahg
+    cc-mode
     eshell
     eshell-autojump
     git
@@ -110,26 +111,116 @@
   (message "jedahu: spinner"))
 
 (defun jedahu-setup-eshell ()
+  (defclass helm-eshell-cd-history-source (helm-source-in-buffer)
+    ((init :initform (lambda ()
+                       (let ((eshell-last-dir-unique t))
+                         (eshell-write-last-dir-ring)
+                         (with-current-buffer (helm-candidate-buffer 'global)
+                           (insert-file-contents eshell-last-dir-ring-file-name)))
+                       (remove-hook 'minibuffer-setup-hook 'eshell-mode)))
+     (nomark :initform t)
+     (keymap :initform helm-eshell-history-map)
+     (filtered-candidate-transformer
+      :initform (lambda (candidates sources)
+                  (reverse candidates)))
+     (candidate-number-limit :initform 9999)
+     (action :initform (lambda (candidate)
+                         (eshell-kill-input)
+                         (cd candidate)
+                         (eshell-reset))))
+    "Helm class to define source for Eshell directory history.")
+
+  (defun helm-eshell-cd-history ()
+    "Preconfigured helm for eshell directory history."
+    (interactive)
+    (helm :sources (helm-make-source "Eshell directory history"
+                       'helm-eshell-cd-history-source)
+          :buffer "*helm eshell directory history*"
+          :resume 'noresume))
+
   (defun jedahu-eshell-init ()
+    (evil-define-operator evil-esh-send-region (beg end)
+      (interactive "<r>")
+      (save-excursion
+        (set-mark beg)
+        (goto-char end)
+        (eshell-send-input t)))
+
+    (defun jedahu-helm-buffer-names-list ()
+      "Preconfigured `helm' to list buffers."
+      (interactive)
+      (unless helm-source-buffers-list
+        (setq helm-source-buffers-list
+              (helm-make-source "Buffers" 'helm-source-buffers)))
+      (helm :sources '(helm-source-buffers-list
+                       helm-source-ido-virtual-buffers
+                       helm-source-buffer-not-found)
+            :buffer "*helm buffers*"
+            :truncate-lines t
+            'filtered-candidate-transformer (lambda (candidates sources)
+                                              (mapcar #'buffer-name candidates))
+            'action (lambda (candidate)
+                      (insert "#<buffer " (buffer-name candidate) ">"))))
+
+    (defun jedahu-eshell-complete-at-point ()
+      (interactive)
+      (if (looking-back "#<buffer ")
+          (let* ((len (length "#<buffer "))
+                 (beg (- (point) len))
+                 (end (point)))
+            (with-helm-show-completion beg end
+              (jedahu-helm-buffer-names-list)))
+        (helm-esh-pcomplete)))
+
+    (spacemacs|define-micro-state eshell-scroll
+      :doc "[,] prev [.] next"
+      :bindings
+      ("," eshell-previous-prompt)
+      ("." eshell-next-prompt))
+
+    (define-key eshell-mode-map (kbd "<tab>") 'jedahu-eshell-complete-at-point)
+
+    (evil-leader/set-key-for-mode 'eshell-mode
+      (kbd "m RET") 'evil-esh-send-region
+      "mgd" 'helm-eshell-cd-history
+      "mn" 'spacemacs/eshell-scroll-micro-state)
+
+    (evil-set-initial-state 'eshell-mode 'normal)
+
     (define-key eshell-mode-map
       [remap eshell-pcomplete] 'helm-esh-pcomplete))
 
   (add-hook 'eshell-mode-hook 'jedahu-eshell-init)
 
+  (defun process-file-to-string (cmd &rest args)
+    (with-output-to-string
+      (with-current-buffer
+          standard-output
+        (apply 'process-file cmd nil t nil args))))
+
+  (defun jedahu-eshell-vcs-info ()
+    (let* ((explicit-shell-file-name (if (file-remote-p default-directory)
+                                         "/bin/sh"
+                                       nil))
+           (vcs (ignore-errors (projectile-project-vcs)))
+           (branch (case vcs
+                     ('git (process-file-to-string "git" "symbolic-ref" "--short" "HEAD"))
+                     ('hg (process-file-to-string "hg" "branch"))
+                     (t nil))))
+      (when branch
+        (string-trim (concat (symbol-name vcs) " " branch)))))
+
   (defun jedahu-eshell-prompt ()
-    (let ((header-bg "#fff"))
+    (let ((header-bg "#fff")
+          (vcs-info (jedahu-eshell-vcs-info)))
       (macrolet ((with-face (str &rest properties)
                             `(propertize ,str 'face ',properties)))
         (concat
-         (with-face (concat (eshell/pwd) " ") :background header-bg)
-         (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time))
-                    :background header-bg :foreground "#888")
-         (with-face
-          (or (ignore-errors
-                (format "(%s)"
-                        (vc-responsible-backend default-directory))) "")
-          :background header-bg)
-         (with-face "\n" :background header-bg)
+         (with-face (concat (eshell/pwd) " "))
+         (when vcs-info
+           (with-face (concat "(" vcs-info ")")
+                      :foreground "#888"))
+         "\n"
          (with-face user-login-name :foreground "blue")
          "@"
          (with-face "localhost" :foreground "green")
@@ -138,7 +229,11 @@
            " $")
          " "))))
 
+  (defun jedahu-eshell-rename-buffer ()
+    (rename-buffer (concat "*eshell*" default-directory) t))
+
   (add-hook 'eshell-post-command-hook 'evil-normal-state)
+  (add-hook 'eshell-post-command-hook 'jedahu-eshell-rename-buffer)
 
   (setq
    eshell-prompt-function 'jedahu-eshell-prompt
@@ -151,10 +246,29 @@
        (jedahu-setup-pcomplete-git)
        (jedahu-setup-pcomplete-hg))))
 
+(defun jdh-c-mode-common-setup ()
+  (setq tab-width 4)
+  (setq c-basic-offset tab-width)
+  (c-set-offset 'arglist-intro '++)
+  (c-set-offset 'substatement-open 0))
+
+(defun jedahu/init-cc-mode ()
+  (add-hook 'c-mode-common-hook 'jdh-c-mode-common-setup))
+
 (defun jedahu/init-eshell-autojump ())
+
+(defun jedahu-helm-setup ()
+  (define-key helm-map (kbd "C-z") nil)
+  (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action))
+
+(defun jedahu/init-helm ()
+  (use-package helm
+    :defer t
+    :commands (helm-find-files-1))
+  (eval-after-load 'helm #'jedahu-helm-setup))
 
 (defun jedahu/init-ahg ())
 (defun jedahu/init-git ())
-(defun jedahu/init-helm ())
+
 (defun jedahu/init-rcirc ())
 (defun jedahu/init-spinner ())
