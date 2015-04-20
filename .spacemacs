@@ -20,6 +20,7 @@
       extra-langs
       fsharp
       git
+      hg
       haskell
       irc
       javascript
