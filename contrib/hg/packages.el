@@ -13,6 +13,7 @@
         "Mb" 'monky-blame-mode
         "Ml" 'monky-log
         "Ms" 'monky-status
+        "Mq" 'monky-queue
         ;; "MC" 'magit-commit
         )
       (evilify monky-commit-mode monky-commit-mode-map

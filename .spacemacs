@@ -149,8 +149,9 @@ layers configuration."
     (setq
      tramp-default-method "plink"
      )
-    (add-to-list 'monky-hg-process-environment
-                 (concat "HGRCPATH=" user-home-directory)))
+    (eval-after-load 'monky
+      '(add-to-list 'monky-hg-process-environment
+                    (concat "HGRCPATH=" user-home-directory))))
 
   (defun find-contrib-file ()
     (interactive)
