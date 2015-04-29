@@ -165,6 +165,9 @@ layers configuration."
 
   (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
 
+  (define-key evil-evilified-state-map "G" 'evil-goto-line)
+  (define-key evil-evilified-state-map "gg" 'evil-goto-first-line)
+
   (use-package markdown-mode
     :defer t
     :config
