@@ -148,7 +148,9 @@ layers configuration."
   (when os-mswin?
     (setq
      tramp-default-method "plink"
-     ))
+     )
+    (add-to-list 'monky-hg-process-environment
+                 (concat "HGRCPATH=" user-home-directory)))
 
   (defun find-contrib-file ()
     (interactive)

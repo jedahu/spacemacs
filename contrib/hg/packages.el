@@ -49,6 +49,12 @@
                (kbd "C-k") 'monky-goto-previous-section
                (kbd "C-n") 'monky-goto-next-section
                (kbd "C-p") 'monky-goto-previous-section
+               (kbd "C-v") 'monky-revert-file)
+      (evilify monky-queue-mode monky-queue-mode-map
+               (kbd "C-j") 'monky-goto-next-section
+               (kbd "C-k") 'monky-goto-previous-section
+               (kbd "C-n") 'monky-goto-next-section
+               (kbd "C-p") 'monky-goto-previous-section
                (kbd "C-v") 'monky-revert-file))
     :config
     (progn
