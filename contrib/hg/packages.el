@@ -6,7 +6,8 @@
 (defun hg/init-monky ()
   (use-package monky
     :defer t
-    :commands (monky-status)
+    :commands (monky-status monky-log monky-blame-mode monky-queue
+               monky-hg-command)
     :init
     (progn
       (evil-leader/set-key
@@ -14,6 +15,7 @@
         "Ml" 'monky-log
         "Ms" 'monky-status
         "Mq" 'monky-queue
+        "M:" 'monky-hg-command
         ;; "MC" 'magit-commit
         )
       (evilify monky-commit-mode monky-commit-mode-map

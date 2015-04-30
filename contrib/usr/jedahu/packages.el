@@ -241,10 +241,11 @@
 
 (defun jedahu/init-eshell ()
   (eval-after-load 'eshell
-    '(progn
-       (jedahu-setup-eshell)
-       (jedahu-setup-pcomplete-git)
-       (jedahu-setup-pcomplete-hg))))
+    '(eval-after-load 'helm
+       '(progn
+          (jedahu-setup-eshell)
+          (jedahu-setup-pcomplete-git)
+          (jedahu-setup-pcomplete-hg)))))
 
 (defun jdh-c-mode-common-setup ()
   (setq tab-width 4)
