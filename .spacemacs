@@ -33,10 +33,11 @@
       smerge
       syntax-checking
       vim-empty-lines
+      windows-scripts
       )
     (when os-mswin? '(mswindows)))
    ;; A list of packages and/or extensions that will not be install and loaded.
-   dotspacemacs-excluded-packages '(yasnippet)
+   dotspacemacs-excluded-packages '(yasnippet haskell-yas)
    ;; If non-nil spacemacs will delete any orphan packages, i.e. packages that
    ;; are declared in a layer which is not a member of
    ;; the list `dotspacemacs-configuration-layers'
@@ -168,6 +169,9 @@ layers configuration."
 
   (define-key evil-evilified-state-map "G" 'evil-goto-line)
   (define-key evil-evilified-state-map "gg" 'evil-goto-first-line)
+
+  (evil-leader/set-key
+    "bU" 'bury-buffer)
 
   (use-package markdown-mode
     :defer t
