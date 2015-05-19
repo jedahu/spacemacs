@@ -22,6 +22,7 @@
       git
       hg
       haskell
+      html
       irc
       javascript
       jedahu
