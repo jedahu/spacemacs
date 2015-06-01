@@ -7,8 +7,7 @@
   (setq-default
    ;; List of additional paths where to look for configuration layers.
    ;; Paths must have a trailing slash (ie. `~/.mycontribs/')
-   dotspacemacs-configuration-layer-path
-   `(,(concat user-emacs-directory "personal/"))
+   dotspacemacs-configuration-layer-path nil
    ;; List of configuration layers to load. If it is the symbol `all' instead
    ;; of a list then all discovered layers will be installed.
    dotspacemacs-configuration-layers
@@ -16,6 +15,7 @@
     '(
       auto-completion
       csharp
+      emacs-lisp
       evil-commentary
       extra-langs
       fsharp
@@ -30,6 +30,7 @@
       org
       restclient
       revealjs
+      shell
       shell-scripts
       smerge
       syntax-checking
@@ -118,7 +119,8 @@ before layers configuration."
    ;; The default package repository used if no explicit repository has been
    ;; specified with an installed package.
    ;; Not used for now.
-   dotspacemacs-default-package-repository nil)
+   dotspacemacs-default-package-repository nil
+   dotspacemacs-additional-packages nil)
   ;; User initialization goes here
   (setq
    git-enable-github-support t
