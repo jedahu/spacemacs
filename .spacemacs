@@ -180,7 +180,24 @@ layers configuration."
     :defer t
     :config
     (progn
-      (set-face-attribute 'markdown-comment-face nil :strike-through nil))))
+      (set-face-attribute 'markdown-comment-face nil :strike-through nil)))
+
+  (eval-after-load 'ispell
+    '(progn
+       (add-to-list 'ispell-dictionary-alist
+                    '(("english"
+                       "[[:alpha:]]"
+                       "[^[:alpha:]]"
+                       "[']"
+                       t
+                       ("-d" "en_AU")
+                       nil
+                       utf-8)))
+       (setq-default ispell-program-name "hunspell")
+       (setq ispell-local-dictionary-alist ispell-dictionary-alist)
+       (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist)))
+
+  (server-start))
 
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
@@ -195,6 +212,7 @@ layers configuration."
  '(ahs-idle-timer 0 t)
  '(ahs-inhibit-face-list nil)
  '(magit-use-overlays nil)
+ '(paradox-github-token t)
  '(ring-bell-function (quote ignore) t)
  '(safe-local-variable-values
    (quote

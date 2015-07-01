@@ -1,11 +1,13 @@
-(defvar jedahu-packages
+(setq jedahu-packages
   '(
     ahg
     cc-mode
+    ediff
     eshell
     eshell-autojump
     git
     helm
+    parent-mode
     rcirc
     spinner
     ))
@@ -109,6 +111,21 @@
 
 (defun jedahu/init-spinner ()
   (message "jedahu: spinner"))
+
+(defun jedahu/init-ediff ()
+  (eval-after-load 'ediff
+    '(progn
+       (defun ediff-copy-both-to-C ()
+         (interactive)
+         (ediff-copy-diff ediff-current-difference nil 'C nil
+                          (concat
+                           (ediff-get-region-contents ediff-current-difference 'A ediff-control-buffer)
+                           (ediff-get-region-contents ediff-current-difference 'B ediff-control-buffer))))
+
+       (defun add-d-to-ediff-mode-map ()
+         (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
+
+       (add-hook 'ediff-keymap-setup-hook'add-d-to-ediff-mode-map))))
 
 (defun jedahu-setup-eshell ()
   (defclass helm-eshell-cd-history-source (helm-source-in-buffer)
@@ -245,7 +262,8 @@
        '(progn
           (jedahu-setup-eshell)
           (jedahu-setup-pcomplete-git)
-          (jedahu-setup-pcomplete-hg)))))
+          ;;(jedahu-setup-pcomplete-hg)
+          ))))
 
 (defun jdh-c-mode-common-setup ()
   (setq tab-width 4)
@@ -268,8 +286,5 @@
     :commands (helm-find-files-1))
   (eval-after-load 'helm #'jedahu-helm-setup))
 
-(defun jedahu/init-ahg ())
-(defun jedahu/init-git ())
-
-(defun jedahu/init-rcirc ())
-(defun jedahu/init-spinner ())
+(defun jedahu/init-parent-mode ()
+  (use-package parent-mode))

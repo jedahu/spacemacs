@@ -3077,7 +3077,7 @@ Here's a summary of the key bindings:
   (setq mode-name "VB.NET")
   (set-syntax-table vbnet-mode-syntax-table)
 
-  (add-hook 'local-write-file-hooks 'vbnet-untabify)
+  ;;(add-hook 'local-write-file-hooks 'vbnet-untabify)
 
   (setq local-abbrev-table vbnet-mode-abbrev-table)
   (if vbnet-capitalize-keywords-p
