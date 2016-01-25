@@ -2,6 +2,8 @@
 
 (setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
+(add-to-list 'load-path "~/Documents/p/omnisharp-emacs/")
+
 (defun dotspacemacs/layers ()
   "Configuration Layers declaration."
   (setq-default
@@ -120,7 +122,10 @@ before layers configuration."
    ;; specified with an installed package.
    ;; Not used for now.
    dotspacemacs-default-package-repository nil
-   dotspacemacs-additional-packages nil)
+   dotspacemacs-additional-packages
+   '(
+     shut-up ;; requied by omnisharp-emacs roslyn branch
+     ))
   ;; User initialization goes here
   (setq
    git-enable-github-support t
@@ -145,6 +150,7 @@ layers configuration."
    mouse-wheel-follow-mouse t
    mouse-wheel-progressive-speed t
    mouse-wheel-scroll-amount '(1 ((shift) . 1))
+   omnisharp-server-executable-path "omnisharp.cmd"
    powerline-default-separator nil
    projectile-switch-project-action #'(lambda () (eshell t))
    )
@@ -166,6 +172,15 @@ layers configuration."
     (interactive)
     (save-some-buffers t))
 
+  (defun ansi-colorify ()
+    (interactive)
+    (if (use-region-p)
+        (ansi-color-apply-on-region (region-beginning) (region-end))
+      (ansi-color-apply-on-region (point-min) (point-max))))
+
+  (defun use-dumb-return ()
+    (local-set-key (kbd "RET") 'newline))
+
   (add-hook 'focus-out-hook 'save-all)
 
   (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
@@ -180,7 +195,18 @@ layers configuration."
     :defer t
     :config
     (progn
+      (add-hook 'markdown-mode-hook 'visual-line-mode)
       (set-face-attribute 'markdown-comment-face nil :strike-through nil)))
+
+  (use-package epa-file
+    :init (epa-file-enable)
+    :config
+    (progn
+      (setq epa-file-select-keys t)))
+
+  (eval-after-load 'csharp-mode
+    '(progn
+       (add-hook 'csharp-mode-hook 'use-dumb-return)))
 
   (eval-after-load 'ispell
     '(progn
@@ -234,4 +260,5 @@ layers configuration."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(company-tooltip-common ((t (:inherit company-tooltip :weight bold :underline nil))))
- '(company-tooltip-common-selection ((t (:inherit company-tooltip-selection :weight bold :underline nil)))))
+ '(company-tooltip-common-selection ((t (:inherit company-tooltip-selection :weight bold :underline nil))))
+ '(smerge-refined-added ((t (:inherit smerge-refined-change :background "green4")))))
