@@ -1,7 +1,6 @@
 ;;; funcs.el --- gtags functions File
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -24,21 +23,21 @@
   (when (fboundp mode)
     (let ((hook (intern (concat (symbol-name mode) "-hook"))))
       (add-hook hook 'helm-gtags-mode))
-    (evil-leader/set-key-for-mode mode
-      "mgc" 'helm-gtags-create-tags
-      "mgd" 'helm-gtags-find-tag
-      "mgf" 'helm-gtags-select-path
-      "mgg" 'helm-gtags-dwim
-      "mgG" 'helm-gtags-dwim-other-window
-      "mgi" 'helm-gtags-tags-in-this-function
-      "mgl" 'helm-gtags-parse-file
-      "mgn" 'helm-gtags-next-history
-      "mgp" 'helm-gtags-previous-history
-      "mgr" 'helm-gtags-find-rtag
-      "mgR" 'helm-gtags-resume
-      "mgs" 'helm-gtags-select
-      "mgS" 'helm-gtags-show-stack
-      "mgu" 'helm-gtags-update-tags)))
+    (spacemacs/set-leader-keys-for-major-mode mode
+      "gc" 'helm-gtags-create-tags
+      "gd" 'helm-gtags-find-tag
+      "gf" 'helm-gtags-select-path
+      "gg" 'helm-gtags-dwim
+      "gG" 'helm-gtags-dwim-other-window
+      "gi" 'helm-gtags-tags-in-this-function
+      "gl" 'helm-gtags-parse-file
+      "gn" 'helm-gtags-next-history
+      "gp" 'helm-gtags-previous-history
+      "gr" 'helm-gtags-find-rtag
+      "gR" 'helm-gtags-resume
+      "gs" 'helm-gtags-select
+      "gS" 'helm-gtags-show-stack
+      "gu" 'helm-gtags-update-tags)))
 
 (defun spacemacs/ggtags-enable-eldoc (mode)
   (add-hook (intern (concat (symbol-name mode) "-hook"))

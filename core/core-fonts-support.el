@@ -1,7 +1,6 @@
 ;;; core-fonts-support.el --- Spacemacs Core File
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -27,7 +26,7 @@ PLIST has the form (\"fontname\" :prop1 val1 :prop2 val2 ...)"
                       :powerline-offset))
          (fontspec (apply 'font-spec :name font font-props)))
     (spacemacs-buffer/message "Setting font \"%s\"..." font)
-    (set-default-font fontspec nil t)
+    (set-frame-font fontspec nil t)
     (setq-default powerline-scale scale)
     (setq-default powerline-height (spacemacs/compute-powerline-height))
     ;; fallback font for unicode characters used in spacemacs

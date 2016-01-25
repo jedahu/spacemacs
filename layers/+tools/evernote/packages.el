@@ -1,7 +1,6 @@
 ;;; packages.el --- Evernote Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -26,7 +25,7 @@
                )
     :init
     (progn
-      (evil-leader/set-key
+      (spacemacs/set-leader-keys
         "aec" 'geeknote-create
         "aee" 'geeknote-edit
         "aef" 'geeknote-find

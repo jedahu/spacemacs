@@ -1,9 +1,9 @@
 ;;; packages.el --- floobits Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Rodolfo Hansen & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Rodolfo Hansen <rhansen@kitsd.com>
+;; URL: https://github.com/syl20bnr/spacemacs
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -30,7 +30,7 @@
         (let ((floobitsrc (spacemacs/floobits-rclocation)))
           (if (file-exists-p floobitsrc) (load floobitsrc))))
 
-      (evil-leader/set-key
+      (spacemacs/set-leader-keys
         "Pc" 'floobits-clear-highlights
         "Pd" 'spacemacs/floobits-load-rcfile
         "Pf" 'floobits-follow-user

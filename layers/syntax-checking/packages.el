@@ -1,7 +1,6 @@
 ;;; packages.el --- Syntax Checking Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -33,36 +32,6 @@
     (progn
       (spacemacs|diminish flycheck-mode " ⓢ" " s")
 
-      ;; color mode line faces
-      (defun spacemacs/defface-flycheck-mode-line-color (state)
-        "Define a face for the given Flycheck STATE."
-        (let* ((fname (intern (format "spacemacs-mode-line-flycheck-%s-face"
-                                      (symbol-name state))))
-              (foreground (face-foreground
-                           (intern (format "flycheck-fringe-%s" state)))))
-          (eval `(defface ,fname '((t ()))
-                   ,(format "Color for Flycheck %s feedback in mode line."
-                            (symbol-name state))
-                   :group 'spacemacs))
-          (set-face-attribute fname nil
-                              :foreground foreground
-                              :box (face-attribute 'mode-line :box))))
-
-      (defun spacemacs/set-flycheck-mode-line-faces ()
-        "Define or set the flycheck info mode-line faces."
-        (mapcar 'spacemacs/defface-flycheck-mode-line-color
-                '(error warning info)))
-      (spacemacs/set-flycheck-mode-line-faces)
-
-      (defmacro spacemacs|custom-flycheck-lighter (error)
-        "Return a formatted string for the given ERROR (error, warning, info)."
-        `(let* ((error-counts (flycheck-count-errors
-                               flycheck-current-errors))
-                (errorp (flycheck-has-current-errors-p ',error))
-                (err (or (cdr (assq ',error error-counts)) "?"))
-                (running (eq 'running flycheck-last-status-change)))
-           (if (or errorp running) (format "•%s " err))))
-
       ;; Custom fringe indicator
       (when (fboundp 'define-fringe-bitmap)
         (define-fringe-bitmap 'my-flycheck-fringe-indicator
@@ -82,7 +51,7 @@
                   #b00000000
                   #b00000000
                   #b00000000
-                  #b01111111)))
+                  #b00000000)))
 
       (flycheck-define-error-level 'error
         :overlay-category 'flycheck-error-overlay
@@ -108,19 +77,35 @@ If the error list is visible, hide it.  Otherwise, show it."
             (quit-window nil window)
           (flycheck-list-errors)))
 
+      (evilified-state-evilify-map flycheck-error-list-mode-map
+        :mode flycheck-error-list-mode
+        :bindings
+        "RET" 'flycheck-error-list-goto-error
+        "j" 'flycheck-error-list-next-error
+        "k" 'flycheck-error-list-previous-error)
+
       ;; key bindings
-      (evil-leader/set-key
+      (spacemacs/set-leader-keys
         "ec" 'flycheck-clear
         "eh" 'flycheck-describe-checker
         "el" 'spacemacs/toggle-flycheck-error-list
-        "ev"    'flycheck-verify-setup))))
+        "es" 'flycheck-select-checker
+        "eS" 'flycheck-set-checker-executable
+        "ev" 'flycheck-verify-setup))))
 
 (defun syntax-checking/init-flycheck-pos-tip ()
   (use-package flycheck-pos-tip
     :if syntax-checking-enable-tooltips
     :defer t
     :init
-    (setq flycheck-display-errors-function 'flycheck-pos-tip-error-messages)))
+    (with-eval-after-load 'flycheck
+      (flycheck-pos-tip-mode))))
 
 (defun syntax-checking/post-init-popwin ()
-  (push '("^\*Flycheck.+\*$" :regexp t :dedicated t :position bottom :stick t :noselect t) popwin:special-display-config))
+  (push '("^\\*Flycheck.+\\*$"
+          :regexp t
+          :dedicated t
+          :position bottom
+          :stick t
+          :noselect t)
+        popwin:special-display-config))

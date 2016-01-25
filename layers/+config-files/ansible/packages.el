@@ -1,7 +1,6 @@
 ;;; packages.el --- Ansible Layer extensions File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2015 Brian Hicks & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Brian Hicks <brian@brianthicks.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -16,8 +15,8 @@
   (use-package ansible
     :defer t
     :init (progn
-            (eval-after-load 'yaml-mode
-              '(add-hook 'yaml-mode-hook 'ansible/ansible-maybe-enable))
+            (with-eval-after-load 'yaml-mode
+              (add-hook 'yaml-mode-hook 'ansible/ansible-maybe-enable))
 
             ;; ansible-mode requires ac-user-dictionary-files. If the
             ;; config is using company-mode this variable will not be
@@ -31,5 +30,5 @@
 (defun ansible/init-ansible-doc ()
   (use-package ansible-doc
     :defer t
-    :init (eval-after-load 'yaml-mode
-            '(add-hook 'yaml-mode-hook 'ansible/ansible-doc-maybe-enable))))
+    :init (with-eval-after-load 'yaml-mode
+            (add-hook 'yaml-mode-hook 'ansible/ansible-doc-maybe-enable))))

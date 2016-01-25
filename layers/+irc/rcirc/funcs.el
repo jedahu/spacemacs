@@ -1,7 +1,6 @@
 ;;; funcs.el --- rcirc Layer functions File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -17,6 +16,7 @@
   "Initialize authinfo.
 Allow rcirc to read authinfo from ~/.authinfo.gpg via the auth-source API.
 This doesn't support the chanserv auth method. "
+  (require 'auth-source)
   (dolist (p (auth-source-search :port '("nickserv" "bitlbee" "quakenet")
                                  :require '(:port :user :secret)))
     (let ((secret (plist-get p :secret))

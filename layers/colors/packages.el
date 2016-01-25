@@ -1,7 +1,6 @@
 ;;; packages.el --- Colors Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -140,11 +139,11 @@ Press any other key to exit." component (eval var) component component)))
           (font-lock-fontify-buffer)
           (colors/change-color-component-overlay-map component)))
       ;; key bindings
-      (evil-leader/set-key "Cis" 'colors/start-change-color-saturation)
-      (evil-leader/set-key "Cil" 'colors/start-change-color-lightness))))
+      (spacemacs/set-leader-keys "Cis" 'colors/start-change-color-saturation)
+      (spacemacs/set-leader-keys "Cil" 'colors/start-change-color-lightness))))
 
 (defun colors/init-rainbow-mode ()
   (use-package rainbow-mode
     :commands rainbow-mode
-    :init (evil-leader/set-key "tCc" 'rainbow-mode)
+    :init (spacemacs/set-leader-keys "tCc" 'rainbow-mode)
     :config (spacemacs|hide-lighter rainbow-mode)))

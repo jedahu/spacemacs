@@ -1,9 +1,8 @@
 ;;; packages.el --- spotify Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Brian Hicks & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
-;; Author: Sylvain Benner <sylvain.benner@gmail.com>
+;; Author: Brian Hicks <brian@brianthicks.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
 ;;
 ;; This file is not part of GNU Emacs.
@@ -14,7 +13,7 @@
 
 (defun spotify/init-spotify ()
   (use-package spotify
-    :config (evil-leader/set-key
+    :config (spacemacs/set-leader-keys
               "amsp" 'spotify-playpause
               "amsn" 'spotify-next
               "amsN" 'spotify-previous
@@ -22,5 +21,5 @@
 
 (defun spotify/init-helm-spotify ()
   (use-package helm-spotify
-    :config (evil-leader/set-key
+    :config (spacemacs/set-leader-keys
               "amsg" 'helm-spotify)))

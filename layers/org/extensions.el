@@ -1,7 +1,6 @@
 ;;; extensions.el --- Org Extensions File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -22,7 +21,7 @@
     (progn
       ;; seems to be required otherwise the extension is not
       ;; loaded properly by org
-      (eval-after-load 'org '(require 'ox-gfm))
+      (with-eval-after-load 'org (require 'ox-gfm))
       (autoload 'org-gfm-export-as-markdown "ox-gfm" "\
  Export current buffer to a Github Flavored Markdown buffer.
 

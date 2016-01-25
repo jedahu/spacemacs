@@ -1,7 +1,6 @@
 ;;; funcs.el --- Better Emacs Defaults Layer functions File
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -35,5 +34,7 @@ point reaches the beginning or end of the buffer, stop there."
 `backward-kill-word' if no region is active."
   (interactive "p")
   (if (region-active-p)
-      (kill-region (region-beginning) (region-end))
+      ;; call interactively so kill-region handles rectangular selection
+      ;; correctly (see https://github.com/syl20bnr/spacemacs/issues/3278)
+      (call-interactively #'kill-region)
     (backward-kill-word arg)))

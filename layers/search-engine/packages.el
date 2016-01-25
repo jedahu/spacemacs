@@ -1,7 +1,6 @@
 ;;; packages.el --- search-engine Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -22,7 +21,7 @@
     :commands (defengine spacemacs/search-engine-select)
     :defines search-engine-alist
     :init
-    (evil-leader/set-key
+    (spacemacs/set-leader-keys
       "a/" 'spacemacs/search-engine-select)
     (setq search-engine-alist
           '((amazon

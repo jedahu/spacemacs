@@ -1,7 +1,6 @@
 ;;; packages.el --- Chinese Layer packages File for Spacemacs
 ;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -13,12 +12,11 @@
 ;; List of all packages to install and/or initialize. Built-in packages
 ;; which require an initialization must be listed explicitly in the list.
 (setq chinese-packages
-    '(
-      find-by-pinyin-dired
-      ace-pinyin
-      pangu-spacing
-      org
-      ))
+      '(
+        find-by-pinyin-dired
+        ace-pinyin
+        pangu-spacing
+        org))
 
 (if chinese-enable-youdao-dict
   (push 'youdao-dictionary chinese-packages))
@@ -26,6 +24,14 @@
 (if (eq chinese-default-input-method 'wubi)
     (push 'chinese-wbim chinese-packages)
   (push 'chinese-pyim chinese-packages))
+
+(if (and chinese-enable-fcitx (not (spacemacs/system-is-mswindows))) ;; disable in Windows
+    (push 'fcitx chinese-packages))
+
+(defun chinese/init-fcitx ()
+  (use-package fcitx
+    :init
+    (fcitx-evil-turn-on)))
 
 (defun chinese/init-chinese-wbim ()
   "Initialize chinese-wubi"
@@ -68,7 +74,7 @@
             pyim-personal-file (concat spacemacs-cache-directory
                                        "pyim-personal.txt")
             default-input-method "chinese-pyim")
-      (evilify pyim-dicts-manager-mode pyim-dicts-manager-mode-map))))
+      (evilified-state-evilify pyim-dicts-manager-mode pyim-dicts-manager-mode-map))))
 
 (defun chinese/init-find-by-pinyin-dired ()
   (use-package find-by-pinyin-dired
@@ -79,6 +85,8 @@
     :defer t
     :init
     (progn
+      (if chinese-enable-avy-pinyin
+          (setq ace-pinyin-use-avy t))
       (ace-pinyin-global-mode t)
       (spacemacs|hide-lighter ace-pinyin-mode))))
 
