@@ -38,9 +38,5 @@ keep [a]ll [m]ine [o]ther [b]ase [c]urrent
         "S." 'spacemacs/smerge-action-micro-state
         "Sn" 'spacemacs/smerge-action-micro-state
         "SN" 'spacemacs/smerge-action-micro-state)
-      (defun guide-key/smerge-mode-hook ()
-        (guide-key/add-local-guide-key-sequence "S")
-        (guide-key/add-local-guide-key-sequence "Sd"))
       (add-hook 'find-file-hook #'smerge-start-session)
-      (add-hook 'smerge-mode-hook #'guide-key/smerge-mode-hook)
       (add-hook 'smerge-mode-hook #'evil-normalize-keymaps))))

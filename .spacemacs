@@ -7,11 +7,7 @@
 (defun dotspacemacs/layers ()
   "Configuration Layers declaration."
   (setq-default
-   ;; List of additional paths where to look for configuration layers.
-   ;; Paths must have a trailing slash (ie. `~/.mycontribs/')
    dotspacemacs-configuration-layer-path nil
-   ;; List of configuration layers to load. If it is the symbol `all' instead
-   ;; of a list then all discovered layers will be installed.
    dotspacemacs-configuration-layers
    (append
     '(
@@ -19,9 +15,11 @@
       csharp
       emacs-lisp
       evil-commentary
+      evil-surround
       extra-langs
       fsharp
       git
+      gnus
       hg
       haskell
       html
@@ -30,9 +28,12 @@
       jedahu
       markdown
       org
+      pass
       restclient
       revealjs
-      shell
+      (shell :variables
+             shell-enable-smart-eshell t
+             shell-protect-eshell-prompt t)
       shell-scripts
       smerge
       syntax-checking
@@ -40,98 +41,49 @@
       windows-scripts
       )
     (when os-mswin? '(mswindows)))
-   ;; A list of packages and/or extensions that will not be install and loaded.
-   dotspacemacs-excluded-packages '(yasnippet haskell-yas)
-   ;; If non-nil spacemacs will delete any orphan packages, i.e. packages that
-   ;; are declared in a layer which is not a member of
-   ;; the list `dotspacemacs-configuration-layers'
+   dotspacemacs-excluded-packages '(yasnippet haskell-yas persp-mode which-function-mode company)
    dotspacemacs-delete-orphan-packages t))
 
 (defun dotspacemacs/init ()
   "Initialization function.
 This function is called at the very startup of Spacemacs initialization
 before layers configuration."
-  ;; This setq-default sexp is an exhaustive list of all the supported
-  ;; spacemacs settings.
   (setq-default
-   ;; Specify the startup banner. If the value is an integer then the
-   ;; banner with the corresponding index is used, if the value is `random'
-   ;; then the banner is chosen randomly among the available banners, if
-   ;; the value is nil then no banner is displayed.
-   dotspacemacs-startup-banner 'random
-   ;; List of themes, the first of the list is loaded when spacemacs starts.
-   ;; Press <SPC> T n to cycle to the next theme in the list (works great
-   ;; with 2 themes variants, one dark and one light)
+   dotspacemacs-startup-banner nil
    dotspacemacs-themes '(solarized-dark
                          solarized-light)
-   ;; If non nil the cursor color matches the state color.
-   dotspacemacs-colorize-cursor-according-to-state t
-   ;; Default font. `powerline-scale' allows to quickly tweak the mode-line
-   ;; size to make separators look not too crappy.
    dotspacemacs-default-font '("Source Code Pro"
-                               :size 13
+                               :size 10.0
                                :weight normal
                                :width normal
                                :powerline-scale 1.1)
-   ;; The leader key
+   dotspacemacs-colorize-cursor-according-to-state t
    dotspacemacs-leader-key "SPC"
-   ;; Major mode leader key is a shortcut key which is the equivalent of
-   ;; pressing `<leader> m`
+   dotspacemacs-emacs-leader-key "C-SPC"
    dotspacemacs-major-mode-leader-key ","
-   ;; The command key used for Evil commands (ex-commands) and
-   ;; Emacs commands (M-x).
-   ;; By default the command key is `:' so ex-commands are executed like in Vim
-   ;; with `:' and Emacs commands are executed with `<leader> :'.
+   dotspacemacs-major-mode-emacs-leader-key "C-,"
    dotspacemacs-command-key ":"
-   ;; Guide-key delay in seconds. The Guide-key is the popup buffer listing
-   ;; the commands bound to the current keystrokes.
    dotspacemacs-guide-key-delay 0.4
-   ;; If non nil a progress bar is displayed when spacemacs is loading. This
-   ;; may increase the boot time on some systems and emacs builds, set it to
-   ;; nil ;; to boost the loading time.
    dotspacemacs-loading-progress-bar t
-   ;; If non nil the frame is fullscreen when Emacs starts up.
-   ;; (Emacs 24.4+ only)
    dotspacemacs-fullscreen-at-startup nil
-   ;; If non nil `spacemacs/toggle-fullscreen' will not use native fullscreen.
-   ;; Use to disable fullscreen animations in OSX."
    dotspacemacs-fullscreen-use-non-native nil
-   ;; If non nil the frame is maximized when Emacs starts up.
-   ;; Takes effect only if `dotspacemacs-fullscreen-at-startup' is nil.
-   ;; (Emacs 24.4+ only)
    dotspacemacs-maximized-at-startup nil
-   ;; A value from the range (0..100), in increasing opacity, which describes
-   ;; the transparency level of a frame when it's active or selected.
-   ;; Transparency can be toggled through `toggle-transparency'.
    dotspacemacs-active-transparency 90
-   ;; A value from the range (0..100), in increasing opacity, which describes
-   ;; the transparency level of a frame when it's inactive or deselected.
-   ;; Transparency can be toggled through `toggle-transparency'.
    dotspacemacs-inactive-transparency 90
-   ;; If non nil unicode symbols are displayed in the mode line.
    dotspacemacs-mode-line-unicode-symbols t
-   ;; If non nil smooth scrolling (native-scrolling) is enabled. Smooth
-   ;; scrolling overrides the default behavior of Emacs which recenters the
-   ;; point when it reaches the top or bottom of the screen.
    dotspacemacs-smooth-scrolling t
-   ;; If non-nil smartparens-strict-mode will be enabled in programming modes.
-   dotspacemacs-smartparens-strict-mode nil
-   ;; If non nil advises quit functions to keep server open when quitting.
+   dotspacemacs-smartparens-strict-mode t
    dotspacemacs-persistent-server nil
-   ;; The default package repository used if no explicit repository has been
-   ;; specified with an installed package.
-   ;; Not used for now.
    dotspacemacs-default-package-repository nil
    dotspacemacs-additional-packages
    '(
      shut-up ;; requied by omnisharp-emacs roslyn branch
-     ))
-  ;; User initialization goes here
+      yaml-mode
+      ))
   (setq
-   git-enable-github-support t
    ))
 
-(defun dotspacemacs/config ()
+(defun dotspacemacs/user-config ()
   "Configuration function.
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
@@ -141,36 +93,52 @@ layers configuration."
    auto-save-timeout 10
    auto-save-visited-file-name t
    compilation-ask-about-save nil
+   epa-file-select-keys nil
+   eshell-prefer-lisp-functions t
    fsharp-build-command "msbuild"
+   git-enable-github-support t
+   gnus-asynchronous t
+   gnus-message-archive-group "[Gmail]/Sent Mail"
+   gnus-message-archive-method '(nnimap "imap.gmail.com")
+   gnus-posting-styles '(((header "to" "jedahu@gmail.com")
+                          (address "jedahu@gmail.com")))
+   gnus-secondary-select-methods
+   '((nnimap "gmail"
+             (nnimap-address "imap.gmail.com")
+             (nnimap-server-port 993)
+             (nnimap-stream ssl)))
    markdown-css-path "markdown.css"
    markdown-hr-strings (list
                         (make-string 80 ?-)
                         (string-trim-right
                          (apply 'concat (make-list 40 "- "))))
+   message-directory "~/.gmail"
+   message-send-mail-function 'smtpmail-send-it
    mouse-wheel-follow-mouse t
    mouse-wheel-progressive-speed t
    mouse-wheel-scroll-amount '(1 ((shift) . 1))
+   nnml-directory "~/.gmail"
    omnisharp-server-executable-path "omnisharp.cmd"
    powerline-default-separator nil
-   projectile-switch-project-action #'(lambda () (eshell t))
+   projectile-switch-project-action
+   #'(lambda ()
+       (let ((eshell-buffer-name
+              (concat "*eshell " default-directory "*")))
+         (eshell t)))
+   smtpmail-default-smtp-server "smtp.gmail.com"
+   tab-width 4
+   c-basic-offset 4
    )
 
   (when os-mswin?
     (setq
      tramp-default-method "plink"
-     )
-    (eval-after-load 'monky
-      '(add-to-list 'monky-hg-process-environment
-                    (concat "HGRCPATH=" user-home-directory))))
+     ))
 
-  (defun find-contrib-file ()
-    (interactive)
-    "Edit the `file' in the spacemacs base directory, in the current window."
-    (helm-find-files-1 configuration-layer-contrib-directory))
-
-  (defun save-all ()
-    (interactive)
-    (save-some-buffers t))
+  (defmacro ilambda (args &rest body)
+    `(lambda ,args
+       (interactive)
+       ,@body))
 
   (defun ansi-colorify ()
     (interactive)
@@ -178,8 +146,48 @@ layers configuration."
         (ansi-color-apply-on-region (region-beginning) (region-end))
       (ansi-color-apply-on-region (point-min) (point-max))))
 
+  (defun end-of-chunk ()
+    "forward line or to ends of mid-expression."
+    (interactive)
+    (goto-char (point-at-eol))
+    (let ((limit (point-at-bol))
+          temp
+          expr-beg)
+      (while (and (setq temp (nth 1 (syntax-ppss)))
+                  (<= limit temp))
+        (goto-char temp)
+        (setq expr-beg (point)))
+      (when expr-beg
+        (goto-char expr-beg)
+        (forward-sexp))))
+
+  (defun process-file-to-string (cmd &rest args)
+    (with-output-to-string
+      (with-current-buffer
+          standard-output
+        (apply 'process-file cmd nil t nil args))))
+
+  (defun save-all ()
+    (interactive)
+    (save-some-buffers t))
+
+  (defun sort-lines-as-exprs (reverse beg end)
+    "sort lines, or whole expression if line ends mid-expression."
+    (interactive "P\nr")
+    (save-excursion
+      (save-restriction
+        (narrow-to-region beg end)
+        (goto-char (point-min))
+        (sort-subr reverse
+                   'forward-line
+                   'end-of-chunk))))
+
   (defun use-dumb-return ()
     (local-set-key (kbd "RET") 'newline))
+
+
+  (defun no-fontification ()
+    (font-lock-mode -1))
 
   (add-hook 'focus-out-hook 'save-all)
 
@@ -188,8 +196,15 @@ layers configuration."
   (define-key evil-evilified-state-map "G" 'evil-goto-line)
   (define-key evil-evilified-state-map "gg" 'evil-goto-first-line)
 
-  (evil-leader/set-key
-    "bU" 'bury-buffer)
+  (evil-leader/set-key "bU" 'bury-buffer)
+  (evil-leader/set-key "br" 'rename-buffer)
+
+  (use-package helm
+    :defer t
+    :config
+    (progn
+      (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
+      (define-key helm-map (kbd "<S-return>") 'helm-select-action)))
 
   (use-package markdown-mode
     :defer t
@@ -198,30 +213,161 @@ layers configuration."
       (add-hook 'markdown-mode-hook 'visual-line-mode)
       (set-face-attribute 'markdown-comment-face nil :strike-through nil)))
 
+  (use-package c-mode
+    :defer t
+    :config
+    (progn
+      (defun c-mode-common-setup ()
+        (setq tab-width 4)
+        (setq c-basic-offset tab-width)
+        (c-set-offset 'arglist-intro '++)
+        (c-set-offset 'substatement-open 0))
+      (add-hook 'c-mode-common-hook 'c-mode-common-setup)))
+
   (use-package epa-file
+    :defer t
     :init (epa-file-enable)
     :config
     (progn
       (setq epa-file-select-keys t)))
 
-  (eval-after-load 'csharp-mode
-    '(progn
-       (add-hook 'csharp-mode-hook 'use-dumb-return)))
+  (use-package csharp-mode
+    :defer t
+    :config
+    (progn
+      (add-hook 'csharp-mode-hook 'use-dumb-return)
+      (add-hook 'csharp-mode-hook 'no-fontification)))
 
-  (eval-after-load 'ispell
-    '(progn
-       (add-to-list 'ispell-dictionary-alist
-                    '(("english"
-                       "[[:alpha:]]"
-                       "[^[:alpha:]]"
-                       "[']"
-                       t
-                       ("-d" "en_AU")
-                       nil
-                       utf-8)))
-       (setq-default ispell-program-name "hunspell")
-       (setq ispell-local-dictionary-alist ispell-dictionary-alist)
-       (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist)))
+  (use-package eshell
+    :defer t
+    :config
+    (progn
+      (setq helm-eshell-history-map nil)
+
+      (evil-define-operator evil-esh-send-region (beg end)
+        (interactive "<r>")
+        (save-excursion
+          (set-mark beg)
+          (goto-char end)
+          (eshell-send-input t)))
+
+      (defclass helm-eshell-cd-history-source (helm-source-in-buffer)
+        ((init :initform (lambda ()
+                           (let ((eshell-last-dir-unique t))
+                             (eshell-write-last-dir-ring)
+                             (with-current-buffer (helm-candidate-buffer 'global)
+                               (insert-file-contents eshell-last-dir-ring-file-name)))
+                           (remove-hook 'minibuffer-setup-hook 'eshell-mode)))
+         (nomark :initform t)
+         (keymap :initform helm-eshell-history-map)
+         (filtered-candidate-transformer
+          :initform (lambda (candidates sources)
+                      (reverse candidates)))
+         (candidate-number-limit :initform 9999)
+         (action :initform (lambda (candidate)
+                             (eshell-kill-input)
+                             (cd candidate)
+                             (eshell-reset))))
+        "Helm class to define source for Eshell directory history.")
+
+      (defun helm-eshell-cd-history ()
+        "Preconfigured helm for eshell directory history."
+        (interactive)
+        (helm :sources (helm-make-source "Eshell directory history"
+                           'helm-eshell-cd-history-source)
+              :buffer "*helm eshell directory history*"
+              :resume 'noresume))
+
+      (setq jedahu-esh-buffers-list nil)
+
+      (defun jedahu-helm-buffer-names-list ()
+        "Preconfigured `helm' to list buffers."
+        (unless jedahu-esh-buffers-list
+          (setq jedahu-esh-buffers-list
+                (helm-make-source "Buffers" 'helm-source-buffers))
+          (helm-attrset 'action
+                        (lambda (x)
+                          (message (concat "<<<<<" (type-of x) ">>>>>"))
+                          (insert "#<buffer" (buffer-name x) ">"))
+                        jedahu-esh-buffers-list))
+        (helm :sources '(jedahu-esh-buffers-list
+                         helm-source-ido-virtual-buffers
+                         helm-source-buffer-not-found)
+              :buffer "*helm buffers*"
+              :truncate-lines t
+              'filtered-candidate-transformer (lambda (candidates sources)
+                                                (mapcar #'buffer-name candidates))))
+
+      (defun jedahu-eshell-complete-at-point ()
+        (interactive)
+        (if (looking-back "#<buffer ")
+            (let* ((len (length "#<buffer "))
+                   (beg (- (point) len))
+                   (end (point)))
+              (unwind-protect
+                  (with-helm-show-completion beg end
+                    (jedahu-helm-buffer-names-list))))
+          (helm-esh-pcomplete)))
+
+      (defun jedahu-add-to-eshell-local-map ()
+        "Bizarrely, eshell-mode-map is buffer local."
+        (define-key eshell-mode-map
+          [remap eshell-pcomplete] 'helm-esh-pcomplete)
+        (define-key eshell-mode-map
+          (kbd "<tab>") 'jedahu-eshell-complete-at-point))
+
+      (spacemacs|define-micro-state eshell-scroll
+        :doc "[,] prev [.] next"
+        :execute-binding-on-enter t
+        :bindings
+        ("," eshell-previous-prompt)
+        ("." eshell-next-prompt))
+
+      (spacemacs/set-leader-keys-for-major-mode 'eshell-mode
+        (kbd "m RET") 'evil-esh-send-region
+        "gd" 'helm-eshell-cd-history
+        "ib" 'eshell-insert-buffer-name
+        "ip" 'eshell-insert-process
+        "ie" 'eshell-insert-envvar
+        "," 'spacemacs/eshell-scroll-micro-state
+        "." 'spacemacs/eshell-scroll-micro-state)
+
+      (add-hook 'eshell-mode-hook 'jedahu-add-to-eshell-local-map)))
+
+  (use-package ispell
+    :defer t
+    :config
+    (progn
+      (add-to-list 'ispell-dictionary-alist
+                   '(("english"
+                      "[[:alpha:]]"
+                      "[^[:alpha:]]"
+                      "[']"
+                      t
+                      ("-d" "en_AU")
+                      nil
+                      utf-8)))
+      (setq-default ispell-program-name "hunspell")
+      (setq ispell-local-dictionary-alist ispell-dictionary-alist)
+      (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist)))
+
+  (use-package ediff
+    :defer t
+    :config
+    (progn
+      (defun ediff-copy-both-to-C ()
+        (interactive)
+        (ediff-copy-diff ediff-current-difference nil 'C nil
+                         (concat
+                          (ediff-get-region-contents
+                           ediff-current-difference 'A ediff-control-buffer)
+                          (ediff-get-region-contents
+                           ediff-current-difference 'B ediff-control-buffer))))
+
+      (defun add-d-to-ediff-mode-map ()
+        (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
+
+      (add-hook 'ediff-keymap-setup-hook'add-d-to-ediff-mode-map)))
 
   (server-start))
 
@@ -232,14 +378,17 @@ layers configuration."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(ahs-case-fold-search nil)
- '(ahs-default-range (quote ahs-range-whole-buffer))
- '(ahs-idle-interval 0.25)
+ '(ahs-case-fold-search nil t)
+ '(ahs-default-range (quote ahs-range-whole-buffer) t)
+ '(ahs-idle-interval 0.25 t)
  '(ahs-idle-timer 0 t)
- '(ahs-inhibit-face-list nil)
+ '(ahs-inhibit-face-list nil t)
  '(magit-use-overlays nil)
+ '(package-selected-packages
+   (quote
+    (markdown-mode avy packed anzu smartparens haskell-mode company projectile helm helm-core yasnippet js2-mode flycheck magit hydra spinner package-build bind-key bind-map evil wanderlust pass ## yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode powershell popwin pcre2el paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-quickhelp company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
- '(ring-bell-function (quote ignore) t)
+ '(ring-bell-function (quote ignore))
  '(safe-local-variable-values
    (quote
     ((eval progn

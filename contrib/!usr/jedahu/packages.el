@@ -99,7 +99,7 @@
      (t
       (while (pcomplete-here (pcomplete-entries)))))))
 
-(defun jedahu/init-rcirc ()
+(defun jedahu/post-init-rcirc ()
   (eval-after-load 'rcirc
     '(progn
        (message "jedahu: rcirc.")
@@ -109,10 +109,10 @@
        (setq rcirc-authinfo-file
              (concat user-emacs-directory "rcirc-authinfo")))))
 
-(defun jedahu/init-spinner ()
+(defun jedahu/post-init-spinner ()
   (message "jedahu: spinner"))
 
-(defun jedahu/init-ediff ()
+(defun jedahu/post-init-ediff ()
   (eval-after-load 'ediff
     '(progn
        (defun ediff-copy-both-to-C ()
@@ -256,7 +256,7 @@
    eshell-prompt-function 'jedahu-eshell-prompt
    eshell-highlight-prompt nil))
 
-(defun jedahu/init-eshell ()
+(defun jedahu/post-init-eshell ()
   (eval-after-load 'eshell
     '(eval-after-load 'helm
        '(progn
@@ -271,20 +271,20 @@
   (c-set-offset 'arglist-intro '++)
   (c-set-offset 'substatement-open 0))
 
-(defun jedahu/init-cc-mode ()
+(defun jedahu/post-init-cc-mode ()
   (add-hook 'c-mode-common-hook 'jdh-c-mode-common-setup))
 
-(defun jedahu/init-eshell-autojump ())
+(defun jedahu/post-init-eshell-autojump ())
 
 (defun jedahu-helm-setup ()
   (define-key helm-map (kbd "C-z") nil)
   (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action))
 
-(defun jedahu/init-helm ()
+(defun jedahu/post-init-helm ()
   (use-package helm
     :defer t
     :commands (helm-find-files-1))
   (eval-after-load 'helm #'jedahu-helm-setup))
 
-(defun jedahu/init-parent-mode ()
+(defun jedahu/post-init-parent-mode ()
   (use-package parent-mode))
