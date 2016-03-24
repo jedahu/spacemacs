@@ -2,7 +2,7 @@
 
 (setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
-(add-to-list 'load-path "~/Documents/p/omnisharp-emacs/")
+;; (add-to-list 'load-path "~/Documents/p/omnisharp-emacs/")
 
 (defun dotspacemacs/layers ()
   "Configuration Layers declaration."
@@ -15,6 +15,9 @@
       csharp
       emacs-lisp
       evil-commentary
+      (evil-snipe :variables
+                  evil-snipe-enable-alternate-f-and-t-behaviours t
+                  evil-snipe-repeat-scope 'whole-buffer)
       evil-surround
       extra-langs
       fsharp
@@ -77,7 +80,7 @@ before layers configuration."
    dotspacemacs-default-package-repository nil
    dotspacemacs-additional-packages
    '(
-     shut-up ;; requied by omnisharp-emacs roslyn branch
+     shut-up ;; required by omnisharp-emacs roslyn branch
       yaml-mode
       ))
   (setq
@@ -87,48 +90,47 @@ before layers configuration."
   "Configuration function.
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
-  (setq
-   auto-save-default t
-   auto-save-interval 300
-   auto-save-timeout 10
-   auto-save-visited-file-name t
-   compilation-ask-about-save nil
-   epa-file-select-keys nil
-   eshell-prefer-lisp-functions t
-   fsharp-build-command "msbuild"
-   git-enable-github-support t
-   gnus-asynchronous t
-   gnus-message-archive-group "[Gmail]/Sent Mail"
-   gnus-message-archive-method '(nnimap "imap.gmail.com")
-   gnus-posting-styles '(((header "to" "jedahu@gmail.com")
-                          (address "jedahu@gmail.com")))
-   gnus-secondary-select-methods
-   '((nnimap "gmail"
-             (nnimap-address "imap.gmail.com")
-             (nnimap-server-port 993)
-             (nnimap-stream ssl)))
-   markdown-css-path "markdown.css"
-   markdown-hr-strings (list
-                        (make-string 80 ?-)
-                        (string-trim-right
-                         (apply 'concat (make-list 40 "- "))))
-   message-directory "~/.gmail"
-   message-send-mail-function 'smtpmail-send-it
-   mouse-wheel-follow-mouse t
-   mouse-wheel-progressive-speed t
-   mouse-wheel-scroll-amount '(1 ((shift) . 1))
-   nnml-directory "~/.gmail"
-   omnisharp-server-executable-path "omnisharp.cmd"
-   powerline-default-separator nil
-   projectile-switch-project-action
-   #'(lambda ()
-       (let ((eshell-buffer-name
-              (concat "*eshell " default-directory "*")))
-         (eshell t)))
-   smtpmail-default-smtp-server "smtp.gmail.com"
-   tab-width 4
-   c-basic-offset 4
-   )
+   (setq auto-save-default t)
+   (setq auto-save-interval 300)
+   (setq auto-save-timeout 10)
+   (setq auto-save-visited-file-name t)
+   (setq-default c-basic-offset 4)
+   (setq-default c-syntactic-indentation nil)
+   (setq-default c-electric-flag nil)
+   (setq compilation-ask-about-save nil)
+   (setq epa-file-select-keys nil)
+   (setq eshell-prefer-lisp-functions t)
+   (setq fsharp-build-command "msbuild")
+   (setq git-enable-github-support t)
+   (setq gnus-asynchronous t)
+   (setq gnus-check-new-newsgroups 'ask-server)
+   (setq gnus-message-archive-group nil)
+   (setq gnus-posting-styles '(((header "to" "jedahu@gmail.com")
+                                (address "jedahu@gmail.com"))))
+   (setq gnus-read-active-file 'some)
+   (setq gnus-secondary-select-methods
+         '((nnimap "gmail"
+                   (nnimap-address "imap.gmail.com")
+                   (nnimap-server-port 993)
+                   (nnimap-stream ssl))))
+   (setq markdown-css-path "markdown.css")
+   (setq markdown-hr-strings (list
+                              (make-string 80 ?-)
+                              (string-trim-right
+                               (apply 'concat (make-list 40 "- ")))))
+   (setq message-directory "~/.gmail")
+   (setq message-send-mail-function 'smtpmail-send-it)
+   (setq mouse-wheel-follow-mouse t)
+   (setq mouse-wheel-progressive-speed t)
+   (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
+   (setq nnml-directory "~/.gmail")
+   (setq omnisharp-server-executable-path "omnisharp.cmd")
+   (setq powerline-default-separator nil)
+   (setq projectile-switch-project-action
+         #'(lambda () (dired default-directory)))
+   (setq smtpmail-default-smtp-server "smtp.gmail.com")
+   (setq tab-width 4)
+   (setq user-mail-address "jedahu@gmail.com")
 
   (when os-mswin?
     (setq
@@ -182,9 +184,8 @@ layers configuration."
                    'forward-line
                    'end-of-chunk))))
 
-  (defun use-dumb-return ()
+  (defun use-dumb-keys ()
     (local-set-key (kbd "RET") 'newline))
-
 
   (defun no-fontification ()
     (font-lock-mode -1))
@@ -235,7 +236,7 @@ layers configuration."
     :defer t
     :config
     (progn
-      (add-hook 'csharp-mode-hook 'use-dumb-return)
+      (add-hook 'csharp-mode-hook 'use-dumb-keys)
       (add-hook 'csharp-mode-hook 'no-fontification)))
 
   (use-package eshell
@@ -378,36 +379,12 @@ layers configuration."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(ahs-case-fold-search nil t)
- '(ahs-default-range (quote ahs-range-whole-buffer) t)
- '(ahs-idle-interval 0.25 t)
- '(ahs-idle-timer 0 t)
- '(ahs-inhibit-face-list nil t)
- '(magit-use-overlays nil)
  '(package-selected-packages
    (quote
-    (markdown-mode avy packed anzu smartparens haskell-mode company projectile helm helm-core yasnippet js2-mode flycheck magit hydra spinner package-build bind-key bind-map evil wanderlust pass ## yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode powershell popwin pcre2el paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-quickhelp company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
- '(paradox-github-token t)
- '(ring-bell-function (quote ignore))
- '(safe-local-variable-values
-   (quote
-    ((eval progn
-           (require
-            (quote projectile))
-           (puthash
-            (projectile-project-root)
-            "msbuild /nologo /verbosity:quiet /m" projectile-compilation-cmd-map))
-     (eval progn
-           (require
-            (quote projectile))
-           (puthash
-            (projectile-project-root)
-            "msbuild /m" projectile-compilation-cmd-map))))))
+    (vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(company-tooltip-common ((t (:inherit company-tooltip :weight bold :underline nil))))
- '(company-tooltip-common-selection ((t (:inherit company-tooltip-selection :weight bold :underline nil))))
- '(smerge-refined-added ((t (:inherit smerge-refined-change :background "green4")))))
+ )
