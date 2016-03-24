@@ -585,7 +585,17 @@
     :init
     (progn
       (setq evil-jumper-auto-save-interval 600)
-      (evil-jumper-mode t))))
+      ;; Move keybindings into global motion state map
+      (add-hook 'evil-jumper-mode-hook
+                (lambda ()
+                  (if evil-jumper-mode
+                      (progn
+                        (define-key evil-motion-state-map (kbd "<C-i>") 'evil-jumper/forward)
+                        (define-key evil-motion-state-map (kbd "C-o") 'evil-jumper/backward))
+                    (define-key evil-motion-state-map (kbd "<C-i>") 'evil-jump-forward)
+                    (define-key evil-motion-state-map (kbd "C-o") 'evil-jump-backward))))
+      (evil-jumper-mode t)
+      (setcdr evil-jumper-mode-map nil))))
 
 (defun spacemacs/init-evil-lisp-state ()
   (use-package evil-lisp-state
@@ -1443,6 +1453,7 @@ Open junk file using helm, with `prefix-arg' search in junk files"
 (defun spacemacs/init-linum-relative ()
   (use-package linum-relative
     :commands (linum-relative-toggle linum-relative-on)
+    :diminish ""
     :init
     (progn
       (when (eq dotspacemacs-line-numbers 'relative)
@@ -1706,33 +1717,33 @@ Open junk file using helm, with `prefix-arg' search in junk files"
                '(:add (spacemacs/smartparens-pair-newline-and-indent "RET"))))))
 
 (defun spacemacs/init-smooth-scrolling ()
-  (defun spacemacs//unset-scroll-margin ()
-    "Set scroll-margin to zero."
-    (setq-local scroll-margin 0))
-
   (use-package smooth-scrolling
-    :if dotspacemacs-smooth-scrolling
-    :init (setq smooth-scroll-margin 5
-                scroll-conservatively 101
-                scroll-preserve-screen-position t
-                auto-window-vscroll nil)
-    :config
+    :init
     (progn
-      (setq scroll-margin 5)
-      ;; add hooks here only for emacs built-in packages
+      (setq smooth-scroll-margin 5)
+      (spacemacs|add-toggle smooth-scrolling
+        :status smooth-scrolling-mode
+        :on (progn
+              (smooth-scrolling-mode)
+              (enable-smooth-scroll-for-function previous-line)
+              (enable-smooth-scroll-for-function next-line)
+              (enable-smooth-scroll-for-function isearch-repeat))
+        :off (progn
+               (smooth-scrolling-mode -1)
+               (disable-smooth-scroll-for-function previous-line)
+               (disable-smooth-scroll-for-function next-line)
+               (disable-smooth-scroll-for-function isearch-repeat))
+        :documentation "Smooth scrolling."
+        :evil-leader "tv")
+      (when dotspacemacs-smooth-scrolling
+        (spacemacs/toggle-smooth-scrolling-on))
+      ;; add hooks here only for emacs built-in packages that are not owned
+      ;; by a layer.
+      (defun spacemacs//unset-scroll-margin ()
+        "Set scroll-margin to zero."
+        (setq-local scroll-margin 0))
       (spacemacs/add-to-hooks 'spacemacs//unset-scroll-margin
-                              '(messages-buffer-mode-hook
-                                comint-mode-hook
-                                term-mode-hook))))
-
-  (unless dotspacemacs-smooth-scrolling
-    ;; deactivate smooth-scrolling advices
-    (ad-disable-advice 'previous-line 'after 'smooth-scroll-down)
-    (ad-activate 'previous-line)
-    (ad-disable-advice 'next-line 'after 'smooth-scroll-up)
-    (ad-activate 'next-line)
-    (ad-disable-advice 'isearch-repeat 'after 'isearch-smooth-scroll)
-    (ad-activate 'isearch-repeat)))
+                              '(messages-buffer-mode-hook)))))
 
 (defun spacemacs/init-spaceline ()
   (use-package spaceline-config
@@ -1886,15 +1897,16 @@ Open junk file using helm, with `prefix-arg' search in junk files"
         "9" 'select-window-9)
       (window-numbering-mode 1))
 
-    (defun spacemacs//window-numbering-assign (windows)
-      "Custom number assignment for special buffers."
-      (mapc (lambda (w)
-              (when (and (boundp 'neo-global--window)
-                         (eq w neo-global--window))
-                (window-numbering-assign w 0)))
-            windows))
-    (add-hook 'window-numbering-before-hook 'spacemacs//window-numbering-assign)
-    (add-hook 'neo-after-create-hook '(lambda (w) (window-numbering-update)))))
+    ;; make sure neotree is always 0
+    (defun spacemacs//window-numbering-assign ()
+      "Custom number assignment for neotree."
+      (when (and (boundp 'neo-buffer-name)
+                 (string= (buffer-name) neo-buffer-name))
+        0))
+    ;; using lambda to work-around a bug in window-numbering, see
+    ;; https://github.com/nschum/window-numbering.el/issues/10
+    (setq window-numbering-assign-func
+          (lambda () (spacemacs//window-numbering-assign)))))
 
 (defun spacemacs/init-volatile-highlights ()
   (use-package volatile-highlights

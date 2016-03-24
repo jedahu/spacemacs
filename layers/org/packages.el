@@ -79,7 +79,7 @@
 (defun org/init-org ()
   (use-package org
     :mode ("\\.org$" . org-mode)
-    :commands (org-clock-out org-occur-in-agenda-files)
+    :commands (org-clock-out org-occur-in-agenda-files org-agenda-files)
     :defer t
     :init
     (progn
@@ -222,15 +222,6 @@ Will work on both org-mode and any mode that accepts plain html."
         "xs" (spacemacs|org-emphasize spacemacs/org-strike-through ?+)
         "xu" (spacemacs|org-emphasize spacemacs/org-underline ?_)
         "xv" (spacemacs|org-emphasize spacemacs/org-verbose ?=))
-
-      (with-eval-after-load 'org-agenda
-        (define-key org-agenda-mode-map "j" 'org-agenda-next-line)
-        (define-key org-agenda-mode-map "k" 'org-agenda-previous-line)
-        ;; Since we override SPC, let's make RET do that functionality
-        (define-key org-agenda-mode-map
-          (kbd "RET") 'org-agenda-show-and-scroll-up)
-        (define-key org-agenda-mode-map
-          (kbd "SPC") spacemacs-default-map))
 
       ;; Add global evil-leader mappings. Used to access org-agenda
       ;; functionalities – and a few others commands – from any other mode.
@@ -379,7 +370,7 @@ Will work on both org-mode and any mode that accepts plain html."
   (spacemacs|define-custom-layout "@Org"
     :binding "o"
     :body
-    (find-file (first org-agenda-files))))
+    (find-file (first (org-agenda-files)))))
 
 (defun org/init-toc-org ()
   (use-package toc-org

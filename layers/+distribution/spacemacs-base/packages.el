@@ -148,7 +148,9 @@
        ediff-window-setup-function 'ediff-setup-windows-plain
        ;; emacs is evil and decrees that vertical shall henceforth be horizontal
        ediff-split-window-function 'split-window-horizontally
-       ediff-merge-split-window-function 'split-window-horizontally))))
+       ediff-merge-split-window-function 'split-window-horizontally)
+      ;; restore window layout when done
+      (add-hook 'ediff-quit-hook #'winner-undo))))
 
 (defun spacemacs-base/init-eldoc ()
   (use-package eldoc
@@ -424,11 +426,11 @@ Example: (evil-map visual \"<\" \"<gv\")"
 
       ;; Define history commands for comint
       (evil-define-key 'insert comint-mode-map
-        (kbd "C-k") 'comint-next-input
-        (kbd "C-j") 'comint-previous-input)
+        (kbd "C-k") 'comint-previous-input
+        (kbd "C-j") 'comint-next-input)
       (evil-define-key 'normal comint-mode-map
-        (kbd "C-k") 'comint-next-input
-        (kbd "C-j") 'comint-previous-input))))
+        (kbd "C-k") 'comint-previous-input
+        (kbd "C-j") 'comint-next-input))))
 
 (defun spacemacs-base/init-evil-escape ()
   (use-package evil-escape
@@ -1246,6 +1248,7 @@ ARG non nil means that the editing style is `vim'."
       ;; buffers that we manage
       (push '("*Help*"                 :dedicated t :position bottom :stick t :noselect nil :height 0.4) popwin:special-display-config)
       (push '("*compilation*"          :dedicated t :position bottom :stick t :noselect t   :height 0.4) popwin:special-display-config)
+      (push '("*rspec-compilation*"    :dedicated t :position bottom :stick t :noselect t   :height 0.4) popwin:special-display-config)
       (push '("*Shell Command Output*" :dedicated t :position bottom :stick t :noselect nil            ) popwin:special-display-config)
       (push '("*Async Shell Command*"  :dedicated t :position bottom :stick t :noselect nil            ) popwin:special-display-config)
       (push '(" *undo-tree*"           :dedicated t :position bottom :stick t :noselect nil :height 0.4) popwin:special-display-config)
@@ -1270,14 +1273,15 @@ ARG non nil means that the editing style is `vim'."
                projectile-ag
                projectile-compile-project
                projectile-dired
-               projectile-grep
                projectile-find-dir
                projectile-find-file
                projectile-find-tag
                projectile-find-test-file
+               projectile-grep
                projectile-invalidate-cache
                projectile-kill-buffers
                projectile-multi-occur
+               projectile-project-p
                projectile-project-root
                projectile-recentf
                projectile-regenerate-tags
@@ -1359,11 +1363,55 @@ ARG non nil means that the editing style is `vim'."
   (use-package restart-emacs
     :defer t
     :init
-    (spacemacs/set-leader-keys "qr" 'spacemacs/restart-emacs)
-    (defun spacemacs/restart-emacs ()
+    (defun spacemacs/restart-emacs (&optional args)
+      "Restart emacs."
       (interactive)
       (setq spacemacs-really-kill-emacs t)
-      (restart-emacs))))
+      (restart-emacs args))
+    (defun spacemacs/restart-emacs-resume-layouts (&optional args)
+      "Restart emacs and resume layouts."
+      (interactive)
+      (spacemacs/restart-emacs (cons "--resume-layouts" args)))
+    (defun spacemacs/restart-emacs-debug-init (&optional args)
+      "Restart emacs and enable debug-init."
+      (interactive)
+      (spacemacs/restart-emacs (cons "--debug-init" args)))
+    (defun spacemacs/restart-stock-emacs-with-packages (packages &optional args)
+      "Restart emacs without the spacemacs configuration, enable
+debug-init and load the given list of packages."
+      (interactive
+       (let* ((guess (function-called-at-point)))
+         (require 'finder-inf nil t)
+         ;; Load the package list if necessary (but don't activate them).
+         (unless package--initialized
+           (package-initialize t))
+         (let ((packages (append (mapcar 'car package-alist)
+                                 (mapcar 'car package-archive-contents)
+                                 (mapcar 'car package--builtins))))
+           (unless (memq guess packages)
+             (setq guess nil))
+           (setq packages (mapcar 'symbol-name packages))
+           (let ((val
+                  (completing-read-multiple
+                   (if guess
+                       (format "Describe package (default %s): "
+                               guess)
+                     "Describe package: ")
+                   packages nil t nil nil guess)))
+             `(,val)))))
+      (let ((load-packages-string (mapconcat (lambda (pkg) (format "(use-package %s)" pkg))
+                                             packages " ")))
+        (spacemacs/restart-emacs-debug-init
+         (append (list "-q" "--execute"
+                       (concat "(progn (package-initialize) "
+                               "(require 'use-package)"
+                               load-packages-string ")"))
+                 args))))
+    (spacemacs/set-leader-keys
+      "qd" 'spacemacs/restart-emacs-debug-init
+      "qD" 'spacemacs/restart-stock-emacs-with-packages
+      "qr" 'spacemacs/restart-emacs-resume-layouts
+      "qR" 'spacemacs/restart-emacs)))
 
 (defun spacemacs-base/init-savehist ()
   (use-package savehist

@@ -117,14 +117,14 @@ the current state and point position."
 ;; TODO: dispatch these in the layers
 (defvar spacemacs-indent-sensitive-modes
   '(coffee-mode
-    python-mode
-    slim-mode
     haml-mode
-    yaml-mode
+    haskell-mode
+    slim-mode
     makefile-mode
+    makefile-bsdmake-mode
     makefile-gmake-mode
     makefile-imake-mode
-    makefile-bsdmake-mode)
+    python-mode)
   "Modes for which auto-indenting is suppressed.")
 
 (defcustom spacemacs-yank-indent-threshold 1000
@@ -171,38 +171,30 @@ the current state and point position."
   "Maximize buffer"
   (interactive)
   (if (and (= 1 (length (window-list)))
-           (assoc'_ register-alist))
-      (jump-to-register '_)
+           (assoc ?_ register-alist))
+      (jump-to-register ?_)
     (progn
-      (window-configuration-to-register '_)
+      (window-configuration-to-register ?_)
       (delete-other-windows))))
 
-;; A small minor mode to use a big fringe
-;; from http://bzg.fr/emacs-strip-tease.html
-(defvar bzg-big-fringe-mode nil)
-(define-minor-mode bzg-big-fringe-mode
+;; A small minor mode to use a big fringe adapted from
+;; http://bzg.fr/emacs-strip-tease.html
+(define-minor-mode spacemacs-centered-buffer-mode
   "Minor mode to use big fringe in the current buffer."
-  :init-value nil
   :global t
-  :variable bzg-big-fringe-mode
+  :init-value nil
   :group 'editing-basics
-  (if (not bzg-big-fringe-mode)
-      (set-fringe-style nil)
-    (set-fringe-mode
-     (/ (- (frame-pixel-width)
-           (* 100 (frame-char-width)))
-        2))))
-
-(defun spacemacs/toggle-maximize-centered-buffer ()
-  "Maximize buffer and center it on the screen"
-  (interactive)
-  (if (= 1 (length (window-list)))
-      (progn  (bzg-big-fringe-mode 0)
-              (jump-to-register '_))
-    (progn
-      (set-register '_ (list (current-window-configuration)))
-      (delete-other-windows)
-      (bzg-big-fringe-mode 1))))
+  (if spacemacs-centered-buffer-mode
+      (progn
+        (window-configuration-to-register ?_)
+        (delete-other-windows)
+        (set-fringe-mode
+         (/ (- (frame-pixel-width)
+               (* 100 (frame-char-width)))
+            2)))
+    (set-fringe-style nil)
+    (when (assoc ?_ register-alist)
+      (jump-to-register ?_))))
 
 (defun spacemacs/useless-buffer-p (buffer)
   "Determines if a buffer is useful."
@@ -292,6 +284,9 @@ argument takes the kindows rotate backwards."
                (rename-buffer new-name)
                (set-visited-file-name new-name)
                (set-buffer-modified-p nil)
+               (when (fboundp 'recentf-add-file)
+                   (recentf-add-file new-name)
+                   (recentf-remove-if-non-kept filename))
                (message "File '%s' successfully renamed to '%s'" name (file-name-nondirectory new-name))))))))
 
 ;; from magnars
@@ -406,6 +401,13 @@ argument takes the kindows rotate backwards."
 
 (defalias 'spacemacs/home 'spacemacs-buffer/goto-buffer
   "Go to home Spacemacs buffer")
+
+(defun spacemacs/home-delete-other-windows ()
+  "Open home Spacemacs buffer and delete other windows.
+Useful for making the home buffer the only visible buffer in the frame."
+  (interactive)
+  (spacemacs/home)
+  (delete-other-windows))
 
 (defun spacemacs/insert-line-above-no-indent (count)
   (interactive "p")
@@ -863,10 +865,12 @@ is nonempty."
 (defun spacemacs/switch-to-scratch-buffer ()
   "Switch to the `*scratch*' buffer. Create it first if needed."
   (interactive)
-  (switch-to-buffer (get-buffer-create "*scratch*"))
-  (when (and (not (eq major-mode dotspacemacs-scratch-mode))
-             (fboundp dotspacemacs-scratch-mode))
-    (funcall dotspacemacs-scratch-mode)))
+  (let ((exists (get-buffer "*scratch*")))
+    (switch-to-buffer (get-buffer-create "*scratch*"))
+    (when (and (not exists)
+               (not (eq major-mode dotspacemacs-scratch-mode))
+               (fboundp dotspacemacs-scratch-mode))
+      (funcall dotspacemacs-scratch-mode))))
 
 ;; http://stackoverflow.com/questions/11847547/emacs-regexp-count-occurrences
 (defun how-many-str (regexp str)
