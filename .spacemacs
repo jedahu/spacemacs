@@ -36,9 +36,11 @@
       restclient
       revealjs
       (shell :variables
-             shell-enable-smart-eshell t
              shell-protect-eshell-prompt t)
       shell-scripts
+      (slack :variables
+             slack-enable-emoji t
+             slack-prefer-current-team t)
       smerge
       syntax-checking
       typescript
@@ -90,54 +92,66 @@ before layers configuration."
   (setq
    ))
 
+(defun dotspacemacs/user-init ()
+  )
+
 (defun dotspacemacs/user-config ()
   "Configuration function.
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
-   (setq auto-save-default t)
-   (setq auto-save-interval 300)
-   (setq auto-save-timeout 10)
-   (setq auto-save-visited-file-name t)
-   (setq-default c-basic-offset 4)
-   (setq-default c-syntactic-indentation nil)
-   (setq-default c-electric-flag nil)
-   (setq compilation-ask-about-save nil)
-   (setq epa-file-select-keys nil)
-   (setq eshell-prefer-lisp-functions t)
-   (setq fsharp-build-command "msbuild")
-   (setq git-enable-github-support t)
-   (setq gnus-asynchronous t)
-   (setq gnus-check-new-newsgroups 'ask-server)
-   (setq gnus-message-archive-group nil)
-   (setq gnus-posting-styles '(((header "to" "jedahu@gmail.com")
-                                (address "jedahu@gmail.com"))))
-   (setq gnus-read-active-file 'some)
-   (setq gnus-secondary-select-methods
-         '((nnimap "gmail"
-                   (nnimap-address "imap.gmail.com")
-                   (nnimap-server-port 993)
-                   (nnimap-stream ssl))))
-   (setq jdh--pulp-build "./node_modules/.bin/pulp build")
-   (setq jdh--pulp-test "./node_modules/.bin/pulp test")
-   (setq jdh--pulp-run "./node_modules/.bin/pulp run")
-   (setq markdown-css-path "markdown.css")
-   (setq markdown-hr-strings (list
-                              (make-string 80 ?-)
-                              (string-trim-right
-                               (apply 'concat (make-list 40 "- ")))))
-   (setq message-directory "~/.gmail")
-   (setq message-send-mail-function 'smtpmail-send-it)
-   (setq mouse-wheel-follow-mouse t)
-   (setq mouse-wheel-progressive-speed t)
-   (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
-   (setq nnml-directory "~/.gmail")
-   (setq omnisharp-server-executable-path "omnisharp.cmd")
-   (setq powerline-default-separator nil)
-   (setq projectile-switch-project-action
-         #'(lambda () (dired default-directory)))
-   (setq smtpmail-default-smtp-server "smtp.gmail.com")
-   (setq tab-width 4)
-   (setq user-mail-address "jedahu@gmail.com")
+  (setq auto-save-default t)
+  (setq auto-save-interval 300)
+  (setq auto-save-timeout 10)
+  (setq auto-save-visited-file-name t)
+  (setq-default c-basic-offset 4)
+  (setq-default c-syntactic-indentation nil)
+  (setq-default c-electric-flag nil)
+  (setq compilation-ask-about-save nil)
+  (setq epa-file-select-keys nil)
+  (setq eshell-prefer-lisp-functions t)
+  (setq fsharp-build-command "msbuild")
+  (setq git-enable-github-support t)
+  (setq gnus-asynchronous t)
+  (setq gnus-check-new-newsgroups 'ask-server)
+  (setq gnus-message-archive-group nil)
+  (setq gnus-posting-styles '(((header "to" "jedahu@gmail.com")
+                               (address "jedahu@gmail.com"))))
+  (setq gnus-read-active-file 'some)
+  (setq gnus-secondary-select-methods
+        '((nnimap "gmail"
+                  (nnimap-address "imap.gmail.com")
+                  (nnimap-server-port 993)
+                  (nnimap-stream ssl))))
+  (setq jdh--pulp-build "./node_modules/.bin/pulp build")
+  (setq jdh--pulp-test "./node_modules/.bin/pulp test")
+  (setq jdh--pulp-run "./node_modules/.bin/pulp run")
+  (setq markdown-css-path "markdown.css")
+  (setq markdown-hr-strings (list
+                             (make-string 80 ?-)
+                             (string-trim-right
+                              (apply 'concat (make-list 40 "- ")))))
+  (setq message-directory "~/.gmail")
+  (setq message-send-mail-function 'smtpmail-send-it)
+  (setq mouse-wheel-follow-mouse t)
+  (setq mouse-wheel-progressive-speed t)
+  (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
+  (setq nnml-directory "~/.gmail")
+  (setq omnisharp-server-executable-path "omnisharp.cmd")
+  (setq powerline-default-separator nil)
+  (setq projectile-switch-project-action
+        #'(lambda () (dired default-directory)))
+  (setq smtpmail-default-smtp-server "smtp.gmail.com")
+  (setq tab-width 4)
+  (setq user-mail-address "jedahu@gmail.com")
+
+  (with-eval-after-load 'slack
+    (slack-register-team
+     :name "takeflite"
+     :default t
+     :client-id "7738394021.32036010000"
+     :client-secret "d619970401a59a3b61fb70f4df042861"
+     :token "xoxp-7738394021-7738394037-9680122357-d3f372"
+     :subscribed-channels '(general)))
 
   (when os-mswin?
     (setq
@@ -206,6 +220,13 @@ layers configuration."
 
   (evil-leader/set-key "bU" 'bury-buffer)
   (evil-leader/set-key "br" 'rename-buffer)
+
+  (spacemacs/set-leader-keys
+    "p'" 'projectile-run-eshell)
+
+  (with-eval-after-load 'compile
+    (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
+           compilation-error-regexp-alist))
 
   (use-package helm
     :defer t
@@ -388,7 +409,7 @@ layers configuration."
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
  '(safe-local-variable-values
    (quote
