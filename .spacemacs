@@ -111,6 +111,7 @@ layers configuration."
   (setq-default c-syntactic-indentation nil)
   (setq-default c-electric-flag nil)
   (setq compilation-ask-about-save nil)
+  (setq create-lockfiles nil)
   (setq epa-file-select-keys nil)
   (setq eshell-prefer-lisp-functions t)
   (setq fsharp-build-command "msbuild")
