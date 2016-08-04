@@ -43,6 +43,7 @@
       smerge
       syntax-checking
       typescript
+      typography
       vim-empty-lines
       windows-scripts
       )
@@ -149,7 +150,9 @@ layers configuration."
   (setq op/site-domain "http://jedatwork.com")
   (setq op/personal-disqus-shortname "jedahu")
   (setq op/personal-google-analytics-id nil)
-  (setq org-src-fontify-natively nil)
+  (setq org-html-htmlize-output-type 'css)
+  (setq org-publish-use-timestamps-flag nil)
+  (setq org-src-fontify-natively t)
   (setq powerline-default-separator nil)
   (setq projectile-switch-project-action
         #'(lambda () (dired default-directory)))
@@ -240,6 +243,65 @@ layers configuration."
   (with-eval-after-load 'compile
     (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
            compilation-error-regexp-alist))
+
+  (use-package ox-publish
+    :no-require t
+    :commands (jdh--org-publish jdh--org-babel-tangle-publish-inplace)
+    :config
+    (progn
+      (defun jdh--org-publish ()
+        (interactive)
+        (let* ((root (projectile-project-root))
+               (current default-directory)
+               (plist (with-temp-buffer
+                        (insert-file-contents-literally
+                         (concat root "org-project.el"))
+                        (goto-char (point-min))
+                        (read (current-buffer))))
+               (index-file (plist-get plist 'index-file))
+               (org-babel-default-header-args
+                (plist-get plist 'babel-default-header-args))
+               (projects (plist-get plist 'projects))
+               (org-link-abbrev-alist (plist-get plist 'link-abbrev-alist))
+               (org-html-head (with-temp-buffer
+                                (insert-file-contents-literally
+                                 (concat
+                                  root
+                                  (plist-get plist 'html-head)))
+                                (buffer-string)))
+               (org-html-link-home (plist-get plist 'html-link-home))
+               (org-export-with-smart-quotes nil)
+               (org-export-with-emphasize t)
+               (org-export-with-special-strings nil)
+               (org-export-with-fixed-width t)
+               (org-export-with-timestamps nil)
+               (org-export-preserve-breaks nil)
+               (org-export-with-section-numbers nil)
+               (org-export-with-sub-superscripts t)
+               (org-export-with-tables t)
+               (org-html-html5-fancy t))
+          (mapc
+           (lambda (proj)
+             (let ((props (cdr proj)))
+               (plist-put props :base-directory
+                          (concat root (plist-get props :base-directory)))
+               (plist-put props :publishing-directory
+                          (concat root (plist-get props :publishing-directory)))))
+           projects)
+          (unwind-protect
+              (with-current-buffer (find-file-noselect (concat root index-file))
+                (org-publish-projects projects))
+            (cd current))))
+
+      (defun jdh--org-babel-tangle-publish-inplace (_ filename _)
+        (org-babel-tangle-file filename))
+
+      (defun jdh--org-babel-tangle-publish (_ filename pub-dir)
+        "Tangle FILENAME and place the results in PUB-DIR."
+        (unless (file-exists-p pub-dir)
+          (make-directory pub-dir t))
+        (mapc (lambda (el) (rename-file el pub-dir t))
+              (org-babel-tangle-file filename)))))
 
   (use-package helm
     :defer t
