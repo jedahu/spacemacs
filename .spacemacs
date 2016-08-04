@@ -244,20 +244,61 @@ layers configuration."
     (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
            compilation-error-regexp-alist))
 
-  (use-package ox-publish
+  (use-package org
     :no-require t
-    :commands (jdh--org-publish jdh--org-babel-tangle-publish-inplace)
+    :commands (jdh--org-project-plist)
     :config
     (progn
+     (org-add-link-type "proj"
+                        (lambda (path)
+                          (find-file
+                           (concat
+                            (projectile-project-root)
+                            (file-name-directory
+                             (plist-get (jdh--org-project-plist) 'index-file))
+                            path))))
+
+     (defun jdh--org-project-plist ()
+       (let ((root (projectile-project-root)))
+         (with-temp-buffer
+           (insert-file-contents-literally
+            (concat root "org-project.el"))
+           (goto-char (point-min))
+           (read (current-buffer)))))
+
+     (defun jdh--translate-org-link-html (link contents info)
+       (let ((props (plist-get link 'link)))
+         (message "LINK PROPS: %s" props)
+         (when (string= "proj" (plist-get props :type))
+           (plist-put props :type "file")
+           (plist-put props :path (concat "/" (plist-get props :path)))))
+       (replace-regexp-in-string
+        "file:///" "/"
+        (org-export-with-backend 'html link contents info)))
+
+     (org-export-define-derived-backend 'jdh--html 'html
+       :translate-alist '((link . jdh--translate-org-link-html)))))
+
+  (use-package ox-publish
+    :no-require t
+    :commands
+    (jdh--org-html-publish-to-html
+     jdh--org-publish
+     jdh--org-babel-tangle-publish-inplace)
+    :config
+    (progn
+      (defun jdh--org-html-publish-to-html (plist filename pub-dir)
+        (org-publish-org-to 'jdh--html filename
+                            (concat "." (or (plist-get plist :html-extension)
+                                            org-html-extension
+                                            "html"))
+                            plist pub-dir))
+
       (defun jdh--org-publish ()
         (interactive)
         (let* ((root (projectile-project-root))
                (current default-directory)
-               (plist (with-temp-buffer
-                        (insert-file-contents-literally
-                         (concat root "org-project.el"))
-                        (goto-char (point-min))
-                        (read (current-buffer))))
+               (plist (jdh--org-project-plist))
                (index-file (plist-get plist 'index-file))
                (org-babel-default-header-args
                 (plist-get plist 'babel-default-header-args))
@@ -279,6 +320,7 @@ layers configuration."
                (org-export-with-section-numbers nil)
                (org-export-with-sub-superscripts t)
                (org-export-with-tables t)
+               (org-export-with-toc t)
                (org-html-html5-fancy t))
           (mapc
            (lambda (proj)
