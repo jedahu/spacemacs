@@ -95,7 +95,6 @@ before layers configuration."
      purescript-mode
      material-theme
      nodejs-repl
-     org-page
      helm-aws))
   (setq
    ))
@@ -146,10 +145,6 @@ layers configuration."
   (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
   (setq nnml-directory "~/.gmail")
   (setq omnisharp-server-executable-path nil)
-  (setq op/repository-directory "~/proj/jedatwork")
-  (setq op/site-domain "http://jedatwork.com")
-  (setq op/personal-disqus-shortname "jedahu")
-  (setq op/personal-google-analytics-id nil)
   (setq org-html-htmlize-output-type 'css)
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
@@ -159,6 +154,8 @@ layers configuration."
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
   (setq tab-width 4)
   (setq user-mail-address "jedahu@gmail.com")
+
+  (autoload 'gettyped-publish "~/proj/gettyped/org-project.el" nil t)
 
   (with-eval-after-load 'slack
     (slack-register-team
@@ -243,107 +240,6 @@ layers configuration."
   (with-eval-after-load 'compile
     (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
            compilation-error-regexp-alist))
-
-  (use-package org
-    :no-require t
-    :commands (jdh--org-project-plist)
-    :config
-    (progn
-     (org-add-link-type "proj"
-                        (lambda (path)
-                          (find-file
-                           (concat
-                            (projectile-project-root)
-                            (file-name-directory
-                             (plist-get (jdh--org-project-plist) 'index-file))
-                            path))))
-
-     (defun jdh--org-project-plist ()
-       (let ((root (projectile-project-root)))
-         (with-temp-buffer
-           (insert-file-contents-literally
-            (concat root "org-project.el"))
-           (goto-char (point-min))
-           (read (current-buffer)))))
-
-     (defun jdh--translate-org-link-html (link contents info)
-       (let ((props (plist-get link 'link)))
-         (message "LINK PROPS: %s" props)
-         (when (string= "proj" (plist-get props :type))
-           (plist-put props :type "file")
-           (plist-put props :path (concat "/" (plist-get props :path)))))
-       (replace-regexp-in-string
-        "file:///" "/"
-        (org-export-with-backend 'html link contents info)))
-
-     (org-export-define-derived-backend 'jdh--html 'html
-       :translate-alist '((link . jdh--translate-org-link-html)))))
-
-  (use-package ox-publish
-    :no-require t
-    :commands
-    (jdh--org-html-publish-to-html
-     jdh--org-publish
-     jdh--org-babel-tangle-publish-inplace)
-    :config
-    (progn
-      (defun jdh--org-html-publish-to-html (plist filename pub-dir)
-        (org-publish-org-to 'jdh--html filename
-                            (concat "." (or (plist-get plist :html-extension)
-                                            org-html-extension
-                                            "html"))
-                            plist pub-dir))
-
-      (defun jdh--org-publish ()
-        (interactive)
-        (let* ((root (projectile-project-root))
-               (current default-directory)
-               (plist (jdh--org-project-plist))
-               (index-file (plist-get plist 'index-file))
-               (org-babel-default-header-args
-                (plist-get plist 'babel-default-header-args))
-               (projects (plist-get plist 'projects))
-               (org-link-abbrev-alist (plist-get plist 'link-abbrev-alist))
-               (org-html-head (with-temp-buffer
-                                (insert-file-contents-literally
-                                 (concat
-                                  root
-                                  (plist-get plist 'html-head)))
-                                (buffer-string)))
-               (org-html-link-home (plist-get plist 'html-link-home))
-               (org-export-with-smart-quotes nil)
-               (org-export-with-emphasize t)
-               (org-export-with-special-strings nil)
-               (org-export-with-fixed-width t)
-               (org-export-with-timestamps nil)
-               (org-export-preserve-breaks nil)
-               (org-export-with-section-numbers nil)
-               (org-export-with-sub-superscripts t)
-               (org-export-with-tables t)
-               (org-export-with-toc t)
-               (org-html-html5-fancy t))
-          (mapc
-           (lambda (proj)
-             (let ((props (cdr proj)))
-               (plist-put props :base-directory
-                          (concat root (plist-get props :base-directory)))
-               (plist-put props :publishing-directory
-                          (concat root (plist-get props :publishing-directory)))))
-           projects)
-          (unwind-protect
-              (with-current-buffer (find-file-noselect (concat root index-file))
-                (org-publish-projects projects))
-            (cd current))))
-
-      (defun jdh--org-babel-tangle-publish-inplace (_ filename _)
-        (org-babel-tangle-file filename))
-
-      (defun jdh--org-babel-tangle-publish (_ filename pub-dir)
-        "Tangle FILENAME and place the results in PUB-DIR."
-        (unless (file-exists-p pub-dir)
-          (make-directory pub-dir t))
-        (mapc (lambda (el) (rename-file el pub-dir t))
-              (org-babel-tangle-file filename)))))
 
   (use-package helm
     :defer t
