@@ -44,7 +44,7 @@
       syntax-checking
       typescript
       typography
-      vim-empty-lines
+      ;; vim-empty-lines
       windows-scripts
       )
     (when os-mswin? '(mswindows)))
@@ -53,7 +53,8 @@
      haskell-yas
      persp-mode
      which-function-mode
-     company)
+     company
+     toc-org)
    dotspacemacs-delete-orphan-packages t))
 
 (defun dotspacemacs/init ()
