@@ -63,10 +63,10 @@ This function is called at the very startup of Spacemacs initialization
 before layers configuration."
   (setq-default
    dotspacemacs-startup-banner nil
-   dotspacemacs-themes '(material
-                         spacemacs-dark
+   dotspacemacs-themes '(spacemacs-dark
                          solarized-dark
-                         solarized-light)
+                         solarized-light
+                         material)
    dotspacemacs-default-font '("Source Code Pro"
                                :size 10.0
                                :weight normal
@@ -153,6 +153,7 @@ layers configuration."
   (setq projectile-switch-project-action
         #'(lambda () (dired default-directory)))
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
+  (setq spacemacs-theme-org-height nil)
   (setq tab-width 4)
   (setq user-mail-address "jedahu@gmail.com")
 
@@ -166,6 +167,21 @@ layers configuration."
      :client-secret "d619970401a59a3b61fb70f4df042861"
      :token "xoxp-7738394021-7738394037-9680122357-d3f372"
      :subscribed-channels '(general)))
+
+  (with-eval-after-load 'org
+    (defun jdh--org-mode-setup ()
+      (dolist (face '(org-document-title
+                      org-level-1
+                      org-level-2
+                      org-level-3
+                      org-level-4
+                      org-level-5
+                      org-level-6
+                      org-level-7
+                      org-level-8))
+        (set-face-attribute face nil :height 1.0)))
+
+    (add-hook 'org-mode-hook 'jdh--org-mode-setup))
 
   (when os-mswin?
     (setq
