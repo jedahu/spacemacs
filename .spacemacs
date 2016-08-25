@@ -1,9 +1,9 @@
 ;; -*- mode: dotspacemacs -*-
-
+;;; Pre init
 (setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
-;; (add-to-list 'load-path "~/Documents/p/omnisharp-emacs/")
-
+;;; dotspacemacs/layers
+;;;; Layers
 (defun dotspacemacs/layers ()
   "Configuration Layers declaration."
   (setq-default
@@ -17,23 +17,20 @@
       (evil-snipe :variables
                   evil-snipe-enable-alternate-f-and-t-behaviours t
                   evil-snipe-repeat-scope 'whole-buffer)
-      evil-surround
       extra-langs
       fsharp
       git
       gnus
-      hg
       haskell
       html
-      irc
       javascript
-      jedahu
       markdown
+      nixos
       org
       pass
       purescript
       restclient
-      revealjs
+      scala
       (shell :variables
              shell-protect-eshell-prompt t)
       shell-scripts
@@ -48,30 +45,35 @@
       windows-scripts
       )
     (when os-mswin? '(mswindows)))
+   dotspacemacs-delete-orphan-packages t
+
+;;;; Exclusions
    dotspacemacs-excluded-packages
-   '(yasnippet
-     haskell-yas
+   '(haskell-yas
      persp-mode
      which-function-mode
      company
      toc-org)
-   dotspacemacs-delete-orphan-packages t))
+   ))
 
+;;; dotspacemacs/init
+;;;; Init
 (defun dotspacemacs/init ()
   "Initialization function.
 This function is called at the very startup of Spacemacs initialization
 before layers configuration."
   (setq-default
+   dotspacemacs-editing-style 'vim
    dotspacemacs-startup-banner nil
    dotspacemacs-themes '(spacemacs-dark
                          solarized-dark
                          solarized-light
                          material)
    dotspacemacs-default-font '("Source Code Pro"
-                               :size 10.0
+                               :size 8.0
                                :weight normal
                                :width normal
-                               :powerline-scale 1.1)
+                               :powerline-scale 1.0)
    dotspacemacs-colorize-cursor-according-to-state t
    dotspacemacs-leader-key "SPC"
    dotspacemacs-emacs-leader-key "C-SPC"
@@ -90,30 +92,46 @@ before layers configuration."
    dotspacemacs-smartparens-strict-mode t
    dotspacemacs-persistent-server nil
    dotspacemacs-default-package-repository nil
+
+;;;; Packages
    dotspacemacs-additional-packages
-   '(csharp-mode
-     yaml-mode
-     purescript-mode
+   '(
+     bnfc
+     csharp-mode
+     evil-vimish-fold
+     helm-aws
+     kv
      material-theme
      nodejs-repl
-     helm-aws))
+     ob-http
+     outshine
+     purescript-mode
+     yaml-mode
+     ))
   (setq
    ))
 
+;;; dotspacemacs/user-init
 (defun dotspacemacs/user-init ()
   )
 
+;;; dotspacemacs/user-config
+;;;; Doc
 (defun dotspacemacs/user-config ()
   "Configuration function.
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
+
+;;;; Setq
+;;;;; Global
   (setq auto-save-default t)
   (setq auto-save-interval 300)
   (setq auto-save-timeout 10)
   (setq auto-save-visited-file-name t)
-  (setq-default c-basic-offset 4)
-  (setq-default c-syntactic-indentation nil)
-  (setq-default c-electric-flag nil)
+  (setq browse-url-browser-function 'eww-browse-url)
+  (setq c-basic-offset 4)
+  (setq c-syntactic-indentation nil)
+  (setq c-electric-flag nil)
   (setq compilation-ask-about-save nil)
   (setq create-lockfiles nil)
   (setq epa-file-select-keys nil)
@@ -131,6 +149,7 @@ layers configuration."
                   (nnimap-address "imap.gmail.com")
                   (nnimap-server-port 993)
                   (nnimap-stream ssl))))
+  (setq holy-mode nil)
   (setq jdh--pulp-build "./node_modules/.bin/pulp build")
   (setq jdh--pulp-test "./node_modules/.bin/pulp test")
   (setq jdh--pulp-run "./node_modules/.bin/pulp run")
@@ -146,48 +165,39 @@ layers configuration."
   (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
   (setq nnml-directory "~/.gmail")
   (setq omnisharp-server-executable-path nil)
+  (setq org-babel-default-header-args:sh
+        '((:prologue . "exec 2>&1")
+             (:epilogue . ":")
+             (:results . "output verbatim")
+             (:wrap . "ANSI")))
+  (setq org-hide-block-overlays t)
+  (setq org-hide-emphasis-markers t)
+  (setq org-hide-inline-src-markers t)
+  (setq org-hide-macro-markers t)
   (setq org-html-htmlize-output-type 'css)
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
+  (setq outline-minor-mode-prefix "\M-*")
   (setq powerline-default-separator nil)
-  (setq projectile-switch-project-action
-        #'(lambda () (dired default-directory)))
+  (setq projectile-switch-project-action 'projectile-run-shell)
+  (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
   (setq spacemacs-theme-org-height nil)
   (setq tab-width 4)
   (setq user-mail-address "jedahu@gmail.com")
+  (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
 
-  (autoload 'gettyped-publish "~/proj/gettyped/org-project.el" nil t)
-
-  (with-eval-after-load 'slack
-    (slack-register-team
-     :name "takeflite"
-     :default t
-     :client-id "7738394021.32036010000"
-     :client-secret "d619970401a59a3b61fb70f4df042861"
-     :token "xoxp-7738394021-7738394037-9680122357-d3f372"
-     :subscribed-channels '(general)))
-
-  (with-eval-after-load 'org
-    (defun jdh--org-mode-setup ()
-      (dolist (face '(org-document-title
-                      org-level-1
-                      org-level-2
-                      org-level-3
-                      org-level-4
-                      org-level-5
-                      org-level-6
-                      org-level-7
-                      org-level-8))
-        (set-face-attribute face nil :height 1.0)))
-
-    (add-hook 'org-mode-hook 'jdh--org-mode-setup))
-
+;;;;; Conditional
   (when os-mswin?
     (setq
      tramp-default-method "plink"
      ))
 
+;;;; Global modes
+  (evil-vimish-fold-mode 1)
+  (yas-global-mode 1)
+
+;;;; Functions
   (defmacro ilambda (args &rest body)
     `(lambda ,args
        (interactive)
@@ -241,48 +251,98 @@ layers configuration."
   (defun no-fontification ()
     (font-lock-mode -1))
 
-  (add-hook 'focus-out-hook 'save-all)
+  (defun jdh--fontify-ansi-colors (limit)
+    (ansi-color-apply-on-region (point) limit))
 
+  (defun jdh-fontify-region-or-buffer ()
+    (if (region-active-p)
+        (font-lock-fontify-region)
+      (font-lock-fontify-buffer)))
+
+  (defun jdh-outline-hide-sublevels ()
+    (interactive)
+    (outline-hide-sublevels 2))
+
+  (defun jdh-outline-show-entry-children ()
+    (interactive)
+    (outline-show-entry)
+    (outline-show-children))
+
+;;;; Modes
+  (define-derived-mode ansi-mode fundamental-mode "ansi"
+    "Fundamental mode that understands ANSI colors."
+    (require 'ansi-color)
+    (font-lock-add-keywords nil '((jdh--fontify-ansi-colors))))
+
+;;;; Lists
   (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
 
+  (add-to-list 'evil-fold-list
+               '((hs-minor-mode)
+                 :open-all hs-show-all
+                 :close-all hs-hide-all
+                 :toggle hs-toggle-hiding
+                 :open hs-show-block
+                 :open-rec nil
+                 :close hs-hide-block))
+
+  (add-to-list 'evil-fold-list
+               '((outline-minor-mode)
+                 :open-all outline-show-all
+                 :close-all jdh-outline-hide-sublevels
+                 :toggle outline-toggle-children
+                 :open jdh-outline-show-entry-children
+                 :open-rec outline-show-subtree
+                 :close outline-hide-subtree))
+
+;;;;; Hooks
+  (add-hook 'focus-out-hook 'save-all)
+  (add-hook 'before-save-hook 'time-stamp)
+
+;;;; Bindings
   (define-key evil-evilified-state-map "G" 'evil-goto-line)
   (define-key evil-evilified-state-map "gg" 'evil-goto-first-line)
+  (define-key evil-normal-state-map "zf" 'evil-vimish-fold/create)
 
   (evil-leader/set-key "bU" 'bury-buffer)
   (evil-leader/set-key "br" 'rename-buffer)
 
+  (evil-define-key 'normal sh-mode-map
+    (kbd "<backtab>") 'outshine-cycle-buffer)
+
+  (evil-define-key 'normal emacs-lisp-mode-map
+    (kbd "<backtab>") 'outshine-cycle-buffer)
+
   (spacemacs/set-leader-keys
     "p'" 'projectile-run-eshell)
 
-  (with-eval-after-load 'compile
-    (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
-           compilation-error-regexp-alist))
+;;;; After load
+;;;;; C
+  (with-eval-after-load 'c-mode
+    (defun c-mode-common-setup ()
+      (setq tab-width 4)
+      (setq c-basic-offset tab-width)
+      (c-set-offset 'arglist-intro '++)
+      (c-set-offset 'substatement-open 0))
+    (add-hook 'c-mode-common-hook 'c-mode-common-setup))
 
-  (use-package helm
-    :defer t
-    :config
-    (progn
-      (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
-      (define-key helm-map (kbd "<S-return>") 'helm-select-action)))
+;;;;; ediff
+  (with-eval-after-load 'ediff
+    (defun ediff-copy-both-to-C ()
+      (interactive)
+      (ediff-copy-diff ediff-current-difference nil 'C nil
+                       (concat
+                        (ediff-get-region-contents
+                         ediff-current-difference 'A ediff-control-buffer)
+                        (ediff-get-region-contents
+                         ediff-current-difference 'B ediff-control-buffer))))
 
-  (use-package markdown-mode
-    :defer t
-    :config
-    (progn
-      (add-hook 'markdown-mode-hook 'visual-line-mode)
-      (set-face-attribute 'markdown-comment-face nil :strike-through nil)))
+    (defun add-d-to-ediff-mode-map ()
+      (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
 
-  (use-package c-mode
-    :defer t
-    :config
-    (progn
-      (defun c-mode-common-setup ()
-        (setq tab-width 4)
-        (setq c-basic-offset tab-width)
-        (c-set-offset 'arglist-intro '++)
-        (c-set-offset 'substatement-open 0))
-      (add-hook 'c-mode-common-hook 'c-mode-common-setup)))
+    (add-hook 'ediff-keymap-setup-hook'add-d-to-ediff-mode-map))
 
+;;;;; EPA
   (use-package epa-file
     :defer t
     :init (epa-file-enable)
@@ -290,146 +350,248 @@ layers configuration."
     (progn
       (setq epa-file-select-keys t)))
 
-  (use-package csharp-mode
+;;;;; eshell
+  (with-eval-after-load 'eshell
+    (setq helm-eshell-history-map nil)
+
+    (evil-define-operator evil-esh-send-region (beg end)
+      (interactive "<r>")
+      (save-excursion
+        (set-mark beg)
+        (goto-char end)
+        (eshell-send-input t)))
+
+    (defclass helm-eshell-cd-history-source (helm-source-in-buffer)
+      ((init :initform (lambda ()
+                         (let ((eshell-last-dir-unique t))
+                           (eshell-write-last-dir-ring)
+                           (with-current-buffer (helm-candidate-buffer 'global)
+                             (insert-file-contents eshell-last-dir-ring-file-name)))
+                         (remove-hook 'minibuffer-setup-hook 'eshell-mode)))
+       (nomark :initform t)
+       (keymap :initform helm-eshell-history-map)
+       (filtered-candidate-transformer
+        :initform (lambda (candidates sources)
+                    (reverse candidates)))
+       (candidate-number-limit :initform 9999)
+       (action :initform (lambda (candidate)
+                           (eshell-kill-input)
+                           (cd candidate)
+                           (eshell-reset))))
+      "Helm class to define source for Eshell directory history.")
+
+    (defun helm-eshell-cd-history ()
+      "Preconfigured helm for eshell directory history."
+      (interactive)
+      (helm :sources (helm-make-source "Eshell directory history"
+                         'helm-eshell-cd-history-source)
+            :buffer "*helm eshell directory history*"
+            :resume 'noresume))
+
+    (setq jedahu-esh-buffers-list nil)
+
+    (defun jedahu-helm-buffer-names-list ()
+      "Preconfigured `helm' to list buffers."
+      (unless jedahu-esh-buffers-list
+        (setq jedahu-esh-buffers-list
+              (helm-make-source "Buffers" 'helm-source-buffers))
+        (helm-attrset 'action
+                      (lambda (x)
+                        (message (concat "<<<<<" (type-of x) ">>>>>"))
+                        (insert "#<buffer" (buffer-name x) ">"))
+                      jedahu-esh-buffers-list))
+      (helm :sources '(jedahu-esh-buffers-list
+                       helm-source-ido-virtual-buffers
+                       helm-source-buffer-not-found)
+            :buffer "*helm buffers*"
+            :truncate-lines t
+            'filtered-candidate-transformer (lambda (candidates sources)
+                                              (mapcar #'buffer-name candidates))))
+
+    (defun jedahu-eshell-complete-at-point ()
+      (interactive)
+      (if (looking-back "#<buffer ")
+          (let* ((len (length "#<buffer "))
+                 (beg (- (point) len))
+                 (end (point)))
+            (unwind-protect
+                (with-helm-show-completion beg end
+                  (jedahu-helm-buffer-names-list))))
+        (helm-esh-pcomplete)))
+
+    (defun jedahu-add-to-eshell-local-map ()
+      "Bizarrely, eshell-mode-map is buffer local."
+      (define-key eshell-mode-map
+        [remap eshell-pcomplete] 'helm-esh-pcomplete)
+      (define-key eshell-mode-map
+        (kbd "<tab>") 'jedahu-eshell-complete-at-point))
+
+    (spacemacs|define-micro-state eshell-scroll
+      :doc "[,] prev [.] next"
+      :execute-binding-on-enter t
+      :bindings
+      ("," eshell-previous-prompt)
+      ("." eshell-next-prompt))
+
+    (spacemacs/set-leader-keys-for-major-mode 'eshell-mode
+      (kbd "m RET") 'evil-esh-send-region
+      "gd" 'helm-eshell-cd-history
+      "ib" 'eshell-insert-buffer-name
+      "ip" 'eshell-insert-process
+      "ie" 'eshell-insert-envvar
+      "," 'spacemacs/eshell-scroll-micro-state
+      "." 'spacemacs/eshell-scroll-micro-state)
+
+    (add-hook 'eshell-mode-hook 'jedahu-add-to-eshell-local-map))
+
+;;;;; Helm
+  (with-eval-after-load 'helm
+    (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
+    (define-key helm-map (kbd "<S-return>") 'helm-select-action))
+
+;;;;; hideshow
+  (with-eval-after-load 'hideshow
+    (add-to-list 'hs-special-modes-alist
+                 '(nix-mode "{\\|\\[\\|''" "}\\|\\]\\|''")))
+;;;;; ispell
+  (with-eval-after-load 'ispell
+    (add-to-list 'ispell-dictionary-alist
+                 '(("english"
+                    "[[:alpha:]]"
+                    "[^[:alpha:]]"
+                    "[']"
+                    t
+                    ("-d" "en_AU")
+                    nil
+                    utf-8)))
+    (setq-default ispell-program-name "hunspell")
+    (setq ispell-local-dictionary-alist ispell-dictionary-alist)
+    (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist))
+
+;;;;; Markdown
+  (with-eval-after-load 'markdown-mode
+    (add-hook 'markdown-mode-hook 'visual-line-mode)
+    (set-face-attribute 'markdown-comment-face nil :strike-through nil))
+
+;;;;; Misc
+  (with-eval-after-load 'compile
+    (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
+           compilation-error-regexp-alist))
+
+  (with-eval-after-load 'lisp-mode
+    (add-hook 'emacs-lisp-mode-hook 'outline-minor-mode))
+
+  (with-eval-after-load 'shell
+    (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+    (add-to-list 'comint-output-filter-functions 'ansi-color-process-output))
+
+  (with-eval-after-load 'sh-script
+    (add-hook 'sh-mode-hook 'outline-minor-mode))
+
+  (with-eval-after-load 'outline
+    (require 'outshine)
+    (add-hook 'outline-minor-mode-hook 'outshine-hook-function))
+
+;;;;; nix-mode
+  (with-eval-after-load 'nix-mode
+    (add-hook 'nix-mode-hook 'hs-minor-mode))
+
+;;;;; Org
+  (with-eval-after-load 'org
+    (defun jdh--org-fontify-inline-src (limit)
+      "Fontify inline src."
+      (when (re-search-forward "\\(\\<src_[a-z]+?{\\)[^{]+?\\(}\\)" limit t)
+        (add-text-properties
+         (match-beginning 0) (match-end 0)
+         '(font-lock-fontified t face org-code))
+        (when org-hide-inline-src-markers
+         (add-text-properties (match-beginning 2) (match-end 2)
+                              '(invisible t))
+         (add-text-properties (match-beginning 1) (match-end 1)
+                              '(invisible t)))
+        (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+        t))
+
+    (defun jdh--org-fontify-ansi-block (limit)
+      (when (re-search-forward "^[ \t]*#\\+BEGIN_ANSI[ \t]*$" limit t)
+        (message "begin")
+        (let ((start (match-end 0)))
+          (when (re-search-forward "^[ \t]*#\\+END_ANSI[ \t]*$" nil t)
+            (message "end")
+            (let ((end (match-beginning 0)))
+              (ansi-color-apply-on-region start end)
+              (add-text-properties
+               start end
+               '(font-lock-fontified t font-lock-multiline t))
+              t)))))
+
+    (defun jdh--org-fontify-ansi-src (limit)
+      (when (re-search-forward "^[ \t]*#\\+BEGIN_SRC[ \t]+ansi[ \t]*$" limit t)
+        (message "begin")
+        (let ((start (match-end 0)))
+          (when (re-search-forward "^[ \t]*#\\+END_SRC[ \t]*$" nil t)
+            (message "end")
+            (let ((end (match-beginning 0)))
+              (ansi-color-apply-on-region start end)
+              (add-text-properties
+               start end
+               '(font-lock-fontified t font-lock-multiline t))
+              t)))))
+
+    (defun jdh--org-mode-setup ()
+      (setq-local time-stamp-start "^#\\+DATE:[ \t]+[<\[]")
+      (setq-local time-stamp-end ">\\|\\]")
+      (setq-local time-stamp-format "%:y-%02m-%02d %03a")
+      (org-babel-do-load-languages
+       'org-babel-load-languages
+       '((emacs-lisp . t)
+         (sh . t)
+         ))
+      (dolist (face '(org-document-title
+                      org-level-1
+                      org-level-2
+                      org-level-3
+                      org-level-4
+                      org-level-5
+                      org-level-6
+                      org-level-7
+                      org-level-8))
+        (set-face-attribute face nil :height 1.0))
+      (font-lock-add-keywords nil
+                              '((jdh--org-fontify-inline-src)
+                                (jdh--org-fontify-ansi-block)
+                                (jdh--org-fontify-ansi-src))
+                              t))
+
+    (defun jdh-org-toggle-macro-markup ()
+      (interactive)
+      (setq org-hide-macro-markers (not org-hide-macro-markers))
+      (jdh-fontify-region-or-buffer))
+
+    (defun jdh-org-toggle-emphasis-markup ()
+      (interactive)
+      (setq org-hide-emphasis-markers (not org-hide-emphasis-markers))
+      (jdh-fontify-region-or-buffer))
+
+    (defun jdh-org-toggle-inline-src-markup ()
+      (interactive)
+      (setq org-hide-inline-src-markers (not org-hide-inline-src-markers))
+      (jdh-fontify-region-or-buffer))
+
+    (spacemacs/set-leader-keys-for-major-mode 'org-mode
+      "otm" 'jdh-org-toggle-macro-markup
+      "ote" 'jdh-org-toggle-emphasis-markup
+      "ots" 'jdh-org-toggle-inline-src-markup)
+
+    (add-hook 'org-mode-hook 'jdh--org-mode-setup))
+
+;;;;; outshine
+  (use-package outshine
     :defer t
-    :config
-    (progn
-      (add-hook 'csharp-mode-hook 'use-dumb-keys)
-      (add-hook 'csharp-mode-hook 'no-fontification)))
+    :commands (outshine-cycle-buffer outshine-hook-function)
+    ))
 
-  (use-package eshell
-    :defer t
-    :config
-    (progn
-      (setq helm-eshell-history-map nil)
-
-      (evil-define-operator evil-esh-send-region (beg end)
-        (interactive "<r>")
-        (save-excursion
-          (set-mark beg)
-          (goto-char end)
-          (eshell-send-input t)))
-
-      (defclass helm-eshell-cd-history-source (helm-source-in-buffer)
-        ((init :initform (lambda ()
-                           (let ((eshell-last-dir-unique t))
-                             (eshell-write-last-dir-ring)
-                             (with-current-buffer (helm-candidate-buffer 'global)
-                               (insert-file-contents eshell-last-dir-ring-file-name)))
-                           (remove-hook 'minibuffer-setup-hook 'eshell-mode)))
-         (nomark :initform t)
-         (keymap :initform helm-eshell-history-map)
-         (filtered-candidate-transformer
-          :initform (lambda (candidates sources)
-                      (reverse candidates)))
-         (candidate-number-limit :initform 9999)
-         (action :initform (lambda (candidate)
-                             (eshell-kill-input)
-                             (cd candidate)
-                             (eshell-reset))))
-        "Helm class to define source for Eshell directory history.")
-
-      (defun helm-eshell-cd-history ()
-        "Preconfigured helm for eshell directory history."
-        (interactive)
-        (helm :sources (helm-make-source "Eshell directory history"
-                           'helm-eshell-cd-history-source)
-              :buffer "*helm eshell directory history*"
-              :resume 'noresume))
-
-      (setq jedahu-esh-buffers-list nil)
-
-      (defun jedahu-helm-buffer-names-list ()
-        "Preconfigured `helm' to list buffers."
-        (unless jedahu-esh-buffers-list
-          (setq jedahu-esh-buffers-list
-                (helm-make-source "Buffers" 'helm-source-buffers))
-          (helm-attrset 'action
-                        (lambda (x)
-                          (message (concat "<<<<<" (type-of x) ">>>>>"))
-                          (insert "#<buffer" (buffer-name x) ">"))
-                        jedahu-esh-buffers-list))
-        (helm :sources '(jedahu-esh-buffers-list
-                         helm-source-ido-virtual-buffers
-                         helm-source-buffer-not-found)
-              :buffer "*helm buffers*"
-              :truncate-lines t
-              'filtered-candidate-transformer (lambda (candidates sources)
-                                                (mapcar #'buffer-name candidates))))
-
-      (defun jedahu-eshell-complete-at-point ()
-        (interactive)
-        (if (looking-back "#<buffer ")
-            (let* ((len (length "#<buffer "))
-                   (beg (- (point) len))
-                   (end (point)))
-              (unwind-protect
-                  (with-helm-show-completion beg end
-                    (jedahu-helm-buffer-names-list))))
-          (helm-esh-pcomplete)))
-
-      (defun jedahu-add-to-eshell-local-map ()
-        "Bizarrely, eshell-mode-map is buffer local."
-        (define-key eshell-mode-map
-          [remap eshell-pcomplete] 'helm-esh-pcomplete)
-        (define-key eshell-mode-map
-          (kbd "<tab>") 'jedahu-eshell-complete-at-point))
-
-      (spacemacs|define-micro-state eshell-scroll
-        :doc "[,] prev [.] next"
-        :execute-binding-on-enter t
-        :bindings
-        ("," eshell-previous-prompt)
-        ("." eshell-next-prompt))
-
-      (spacemacs/set-leader-keys-for-major-mode 'eshell-mode
-        (kbd "m RET") 'evil-esh-send-region
-        "gd" 'helm-eshell-cd-history
-        "ib" 'eshell-insert-buffer-name
-        "ip" 'eshell-insert-process
-        "ie" 'eshell-insert-envvar
-        "," 'spacemacs/eshell-scroll-micro-state
-        "." 'spacemacs/eshell-scroll-micro-state)
-
-      (add-hook 'eshell-mode-hook 'jedahu-add-to-eshell-local-map)))
-
-  (use-package ispell
-    :defer t
-    :config
-    (progn
-      (add-to-list 'ispell-dictionary-alist
-                   '(("english"
-                      "[[:alpha:]]"
-                      "[^[:alpha:]]"
-                      "[']"
-                      t
-                      ("-d" "en_AU")
-                      nil
-                      utf-8)))
-      (setq-default ispell-program-name "hunspell")
-      (setq ispell-local-dictionary-alist ispell-dictionary-alist)
-      (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist)))
-
-  (use-package ediff
-    :defer t
-    :config
-    (progn
-      (defun ediff-copy-both-to-C ()
-        (interactive)
-        (ediff-copy-diff ediff-current-difference nil 'C nil
-                         (concat
-                          (ediff-get-region-contents
-                           ediff-current-difference 'A ediff-control-buffer)
-                          (ediff-get-region-contents
-                           ediff-current-difference 'B ediff-control-buffer))))
-
-      (defun add-d-to-ediff-mode-map ()
-        (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
-
-      (add-hook 'ediff-keymap-setup-hook'add-d-to-ediff-mode-map)))
-
-  (server-start))
-
+;;; Custom
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
 (custom-set-variables
