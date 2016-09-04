@@ -50,6 +50,7 @@
 ;;;; Exclusions
    dotspacemacs-excluded-packages
    '(haskell-yas
+     org-bullets
      persp-mode
      which-function-mode
      company
@@ -136,6 +137,51 @@ layers configuration."
   (setq create-lockfiles nil)
   (setq epa-file-select-keys nil)
   (setq eshell-prefer-lisp-functions t)
+  (setq evil-fold-list
+        '(((outline-minor-mode)
+           :open-all outline-show-all
+           :close-all jdh-outline-hide-sublevels
+           :toggle outline-toggle-children
+           :open jdh-outline-show-entry-children
+           :open-rec outline-show-subtree
+           :close outline-hide-subtree)
+          ((hs-minor-mode)
+           :open-all hs-show-all
+           :close-all hs-hide-all
+           :toggle hs-toggle-hiding
+           :open hs-show-block
+           :open-rec nil
+           :close hs-hide-block)
+          ((hide-ifdef-mode)
+           :open-all show-ifdefs
+           :close-all hide-ifdefs
+           :toggle nil
+           :open show-ifdef-block
+           :open-rec nil
+           :close hide-ifdef-block)
+          ((outline-mode outline-minor-mode org-mode markdown-mode)
+           :open-all show-all
+           :close-all #[nil "\300\301!\207" [hide-sublevels 1] 2]
+           :toggle outline-toggle-children
+           :open #[nil "\300 \210\301 \207" [show-entry show-children] 1]
+           :open-rec show-subtree
+           :close hide-subtree)
+          ((vimish-fold-mode)
+           :delete vimish-fold-delete
+           :open-all vimish-fold-unfold-all
+           :close-all vimish-fold-refold-all
+           :toggle vimish-fold-toggle
+           :open vimish-fold-unfold
+           :open-rec nil
+           :close vimish-fold-refold)
+          ((origami-mode)
+           :open-all #[nil "\300p!\207" [origami-open-all-nodes] 2]
+           :close-all #[nil "\300p!\207" [origami-close-all-nodes] 2]
+           :toggle #[nil "\300p`\"\207" [origami-toggle-node] 3]
+           :open #[nil "\300p`\"\207" [origami-open-node] 3]
+           :open-rec #[nil "\300p`\"\207" [origami-open-node-recursively] 3]
+           :close #[nil "\300p`\"\207" [origami-close-node] 3])))
+  (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
   (setq fsharp-build-command "msbuild")
   (setq git-enable-github-support t)
   (setq gnus-asynchronous t)
@@ -165,21 +211,26 @@ layers configuration."
   (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
   (setq nnml-directory "~/.gmail")
   (setq omnisharp-server-executable-path nil)
+  (setq org-agenda-files "~/AGENDA")
   (setq org-babel-default-header-args:sh
         '((:prologue . "exec 2>&1")
              (:epilogue . ":")
              (:results . "output verbatim")
              (:wrap . "ANSI")))
+  (setq org-bullets-mode nil)
   (setq org-hide-block-overlays t)
   (setq org-hide-emphasis-markers t)
   (setq org-hide-inline-src-markers t)
+  (setq org-hide-leading-starts nil)
   (setq org-hide-macro-markers t)
   (setq org-html-htmlize-output-type 'css)
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
+  (setq org-tags-column -80)
   (setq outline-minor-mode-prefix "\M-*")
   (setq powerline-default-separator nil)
   (setq projectile-switch-project-action 'projectile-run-shell)
+  (setq shell-default-shell 'shell)
   (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
   (setq spacemacs-theme-org-height nil)
@@ -449,10 +500,6 @@ layers configuration."
     (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
     (define-key helm-map (kbd "<S-return>") 'helm-select-action))
 
-;;;;; hideshow
-  (with-eval-after-load 'hideshow
-    (add-to-list 'hs-special-modes-alist
-                 '(nix-mode "{\\|\\[\\|''" "}\\|\\]\\|''")))
 ;;;;; ispell
   (with-eval-after-load 'ispell
     (add-to-list 'ispell-dictionary-alist
@@ -542,6 +589,7 @@ layers configuration."
       (setq-local time-stamp-start "^#\\+DATE:[ \t]+[<\[]")
       (setq-local time-stamp-end ">\\|\\]")
       (setq-local time-stamp-format "%:y-%02m-%02d %03a")
+      (org-indent-mode -1)
       (org-babel-do-load-languages
        'org-babel-load-languages
        '((emacs-lisp . t)
@@ -599,17 +647,19 @@ layers configuration."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(column-number-mode t)
  '(custom-safe-themes
    (quote
     ("bffa9739ce0752a37d9b1eee78fc00ba159748f50dc328af4be661484848e476" default)))
+ '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
     (slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
- )
+ '(tool-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(default ((t (:family "DejaVu Sans Mono" :foundry "unknown" :slant normal :weight normal :height 83 :width normal)))))
