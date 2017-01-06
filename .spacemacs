@@ -196,7 +196,10 @@ layers configuration."
            :close #[nil "\300p`\"\207" [origami-close-node] 3])))
   (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
   (setq flow-executable "flow")
+  (setq flycheck-display-errors-function
+        #'flycheck-display-error-messages-unless-error-list)
   (setq flycheck-javascript-flow-executable flow-executable)
+  (setq flycheck-pos-tip-timeout 999)
   (setq flycheck-standard-error-navigation t)
   (setq fsharp-build-command "msbuild")
   (setq git-enable-github-support t)
@@ -257,8 +260,6 @@ layers configuration."
   (setq powerline-default-separator 'utf-8)
   (setq powerline-utf-8-separator-left 124)
   (setq powerline-utf-8-separator-right 124)
-  (setq projectile-project-root-files-functions
-        '(projectile-root-local projectile-root-top-down projectile-root-top-down-recurring))
   (setq projectile-indexing-method 'alien)
   (setq projectile-enable-caching t)
   (setq projectile-switch-project-action 'projectile-run-eshell)
@@ -407,13 +408,14 @@ layers configuration."
   (define-key evil-normal-state-map "zf" 'evil-vimish-fold/create)
   (define-key evil-normal-state-map "'" 'helm-evil-markers)
 
-  (evil-leader/set-key "bU" 'bury-buffer)
-  (evil-leader/set-key "br" 'rename-buffer)
   (evil-leader/set-key "aoc" nil)
   (evil-leader/set-key "aoC" 'org-capture)
   (evil-leader/set-key "aocg" 'org-clock-goto)
   (evil-leader/set-key "aoct" 'org-clock-select-task)
   (evil-leader/set-key "aoco" 'org-clock-out)
+  (evil-leader/set-key "br" 'rename-buffer)
+  (evil-leader/set-key "bU" 'bury-buffer)
+  (evil-leader/set-key "e," 'flycheck-display-error-at-point)
 
   (evil-define-key 'normal sh-mode-map
     (kbd "<backtab>") 'outshine-cycle-buffer)
@@ -587,9 +589,9 @@ layers configuration."
       "ft" 'jdh-flow-type-at-pos))
 
 ;;;;; flycheck
-  (with-eval-after-load 'flycheck
-    (require 'flycheck-flow)
-    (add-hook 'js-mode-hook 'flycheck-mode))
+  ;; (with-eval-after-load 'flycheck
+  ;;   (require 'flycheck-flow)
+  ;;   (add-hook 'js-mode-hook 'flycheck-mode))
 
 ;;;;; Helm
   (with-eval-after-load 'helm
@@ -732,8 +734,8 @@ layers configuration."
 ;;;;; Misc
   (with-eval-after-load 'compile
     (add-to-list 'compilation-error-regexp-alist-alist
-                 '(flow "^\\([^:]+\\):\\([0-9]+\\)$" 1 2))
-    (pushnew 'flow compilation-error-regexp-alist)
+                 '(flow "^\\([^:\n]+\\):\\([0-9]+\\)$" 1 2))
+    (setq compilation-error-regexp-alist '(flow))
     ;; (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
     ;;          compilation-error-regexp-alist)
     )
@@ -905,7 +907,7 @@ layers configuration."
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (insert-shebang hide-comnt mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
  '(tool-bar-mode nil))
 (custom-set-faces
