@@ -125,7 +125,7 @@ layers configuration."
 
 ;;;; Setq
 ;;;;; Global
-  (setq auto-save-default t)
+  (setq auto-save-default nil)
   (setq auto-save-interval 300)
   (setq auto-save-timeout 10)
   (setq auto-save-visited-file-name t)
@@ -327,6 +327,7 @@ layers configuration."
 
 ;;;; Lists
   (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
+  (add-to-list 'auto-mode-alist '("\\.es\\'" . js2-mode))
 
   (add-to-list 'evil-fold-list
                '((hs-minor-mode)
@@ -348,6 +349,7 @@ layers configuration."
 
 ;;;;; Hooks
   (add-hook 'focus-out-hook 'save-all)
+  ;; (add-hook 'evil-normal-state-entry-hook 'save-buffer)
   (add-hook 'before-save-hook 'time-stamp)
 
 ;;;; Bindings
