@@ -11,7 +11,8 @@
    dotspacemacs-configuration-layers
    (append
     '(
-      auto-completion
+      (auto-completion :variables
+                       auto-completion-enable-snippets-in-popup 'manual)
       emacs-lisp
       evil-commentary
       (evil-snipe :variables
@@ -21,6 +22,7 @@
       fsharp
       git
       gnus
+      gtags
       haskell
       html
       javascript
@@ -38,22 +40,21 @@
              slack-enable-emoji t
              slack-prefer-current-team t)
       smerge
+      sql
       syntax-checking
       typescript
       typography
       ;; vim-empty-lines
       windows-scripts
       )
-    (when os-mswin? '(mswindows)))
+    (when os-mswin? '()))
    dotspacemacs-delete-orphan-packages t
 
 ;;;; Exclusions
    dotspacemacs-excluded-packages
    '(haskell-yas
      org-bullets
-     persp-mode
      which-function-mode
-     company
      toc-org)
    ))
 
@@ -98,13 +99,20 @@ before layers configuration."
    dotspacemacs-additional-packages
    '(
      bnfc
+     company-flow
      csharp-mode
+     dired-narrow
      evil-vimish-fold
+     flycheck-flow
+     git-gutter
      helm-aws
+     helm-chrome
      kv
      material-theme
+     mocha
      nodejs-repl
      ob-http
+     org-tree-slide
      outshine
      purescript-mode
      yaml-mode
@@ -114,6 +122,7 @@ before layers configuration."
 
 ;;; dotspacemacs/user-init
 (defun dotspacemacs/user-init ()
+  (setq outline-minor-mode-prefix "\M-*")
   )
 
 ;;; dotspacemacs/user-config
@@ -123,13 +132,17 @@ before layers configuration."
  This function is called at the very end of Spacemacs initialization after
 layers configuration."
 
+;;;; Require
+  (require 'generic-x)
+
+
 ;;;; Setq
 ;;;;; Global
   (setq auto-save-default nil)
   (setq auto-save-interval 300)
   (setq auto-save-timeout 10)
   (setq auto-save-visited-file-name t)
-  (setq browse-url-browser-function 'eww-browse-url)
+  (setq browse-url-browser-function 'browse-url-default-windows-browser)
   (setq c-basic-offset 4)
   (setq c-syntactic-indentation nil)
   (setq c-electric-flag nil)
@@ -182,6 +195,12 @@ layers configuration."
            :open-rec #[nil "\300p`\"\207" [origami-open-node-recursively] 3]
            :close #[nil "\300p`\"\207" [origami-close-node] 3])))
   (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
+  (setq flow-executable "flow")
+  (setq flycheck-display-errors-function
+        #'flycheck-display-error-messages-unless-error-list)
+  (setq flycheck-javascript-flow-executable flow-executable)
+  (setq flycheck-pos-tip-timeout 999)
+  (setq flycheck-standard-error-navigation t)
   (setq fsharp-build-command "msbuild")
   (setq git-enable-github-support t)
   (setq gnus-asynchronous t)
@@ -195,11 +214,20 @@ layers configuration."
                   (nnimap-address "imap.gmail.com")
                   (nnimap-server-port 993)
                   (nnimap-stream ssl))))
+  (setq helm-follow-mode-persistent nil)
   (setq holy-mode nil)
   (setq jdh--pulp-build "./node_modules/.bin/pulp build")
   (setq jdh--pulp-test "./node_modules/.bin/pulp test")
   (setq jdh--pulp-run "./node_modules/.bin/pulp run")
-  (setq markdown-css-path "markdown.css")
+  (setq jdh-markdown-hide-inline-markers nil)
+  (setq js--prettify-symbols-alist
+        '(("=>" . ?⇒)
+          (">=" . ?≥)
+          ("<=" . ?≤)
+          ("===" . ?≡)
+          ("&&" . ?∧)
+          ("||" . ?∨)
+          ("void" . ?⊥)))
   (setq markdown-hr-strings (list
                              (make-string 80 ?-)
                              (string-trim-right
@@ -224,12 +252,17 @@ layers configuration."
   (setq org-hide-leading-starts nil)
   (setq org-hide-macro-markers t)
   (setq org-html-htmlize-output-type 'css)
+  (setq org-log-done 'time)
+  (setq org-log-into-drawer t)
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
   (setq org-tags-column -80)
-  (setq outline-minor-mode-prefix "\M-*")
-  (setq powerline-default-separator nil)
-  (setq projectile-switch-project-action 'projectile-run-shell)
+  (setq powerline-default-separator 'utf-8)
+  (setq powerline-utf-8-separator-left 124)
+  (setq powerline-utf-8-separator-right 124)
+  (setq projectile-indexing-method 'alien)
+  (setq projectile-enable-caching t)
+  (setq projectile-switch-project-action 'projectile-run-eshell)
   (setq shell-default-shell 'shell)
   (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
@@ -247,6 +280,12 @@ layers configuration."
 ;;;; Global modes
   (evil-vimish-fold-mode 1)
   (yas-global-mode 1)
+
+;;;; File types
+  (add-to-list 'auto-mode-alist '("\\.es\\.flow\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.es\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.js\\.flow\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
 ;;;; Functions
   (defmacro ilambda (args &rest body)
@@ -302,6 +341,19 @@ layers configuration."
   (defun no-fontification ()
     (font-lock-mode -1))
 
+  (defun jdh-file-string (path)
+    (with-temp-buffer
+      (insert-file-contents path)
+      (buffer-string)))
+
+  (defun jdh-file-lines (path)
+    (split-string (jdh-file-string path) "\n" t))
+
+  (defun jdh-process-string (cmd &rest args)
+    (with-temp-buffer
+      (apply 'call-process cmd nil (current-buffer) nil args)
+      (buffer-string)))
+
   (defun jdh--fontify-ansi-colors (limit)
     (ansi-color-apply-on-region (point) limit))
 
@@ -356,9 +408,16 @@ layers configuration."
   (define-key evil-evilified-state-map "G" 'evil-goto-line)
   (define-key evil-evilified-state-map "gg" 'evil-goto-first-line)
   (define-key evil-normal-state-map "zf" 'evil-vimish-fold/create)
+  (define-key evil-normal-state-map "'" 'helm-evil-markers)
 
-  (evil-leader/set-key "bU" 'bury-buffer)
+  (evil-leader/set-key "aoc" nil)
+  (evil-leader/set-key "aoC" 'org-capture)
+  (evil-leader/set-key "aocg" 'org-clock-goto)
+  (evil-leader/set-key "aoct" 'org-clock-select-task)
+  (evil-leader/set-key "aoco" 'org-clock-out)
   (evil-leader/set-key "br" 'rename-buffer)
+  (evil-leader/set-key "bU" 'bury-buffer)
+  (evil-leader/set-key "e," 'flycheck-display-error-at-point)
 
   (evil-define-key 'normal sh-mode-map
     (kbd "<backtab>") 'outshine-cycle-buffer)
@@ -369,7 +428,43 @@ layers configuration."
   (spacemacs/set-leader-keys
     "p'" 'projectile-run-eshell)
 
-;;;; After load
+;;;; Modules
+;;;;; ssh
+  (defun jdh-ssh-agent-start ()
+    (with-current-buffer (get-buffer-create "*ensure-ssh*")
+      (erase-buffer)
+      (call-process "ssh-agent" nil t)
+      (goto-char 0)
+      (search-forward "SSH_AUTH_SOCK=")
+      (replace-match "")
+      (search-forward "; export SSH_AUTH_SOCK")
+      (replace-match "")
+      (search-forward "SSH_AGENT_PID=")
+      (replace-match "")
+      (search-forward "; export SSH_AGENT_PID")
+      (write-file "~/.ssh/agent.env")))
+
+  (defun jdh-ssh-load-env ()
+    (when (file-readable-p "~/.ssh/agent.env")
+      (let ((lines (jdh-file-lines "~/.ssh/agent.env")))
+        (setenv "SSH_ASKPASS"
+                (concat (string-trim (jdh-process-string "git" "--exec-path"))
+                        "/git-gui--askpass"))
+        (setenv "SSH_AUTH_SOCK" (nth 0 lines))
+        (setenv "SSH_AGENT_PID" (nth 1 lines)))))
+
+  (defun jdh-ssh-agent-ensure ()
+    (interactive)
+    (jdh-ssh-load-env)
+    (let ((exit (call-process "ssh-add" nil nil nil "-l")))
+      (case exit
+        (1 (call-process "ssh-add" nil nil nil "~/.ssh/id_rsa"))
+        (2 (jdh-ssh-agent-start)
+           (jdh-ssh-load-env)
+           (call-process "ssh-add" nil nil nil "~/.ssh/id_rsa")))))
+
+  (jdh-ssh-agent-ensure)
+
 ;;;;; C
   (with-eval-after-load 'c-mode
     (defun c-mode-common-setup ()
@@ -441,44 +536,6 @@ layers configuration."
             :buffer "*helm eshell directory history*"
             :resume 'noresume))
 
-    (setq jedahu-esh-buffers-list nil)
-
-    (defun jedahu-helm-buffer-names-list ()
-      "Preconfigured `helm' to list buffers."
-      (unless jedahu-esh-buffers-list
-        (setq jedahu-esh-buffers-list
-              (helm-make-source "Buffers" 'helm-source-buffers))
-        (helm-attrset 'action
-                      (lambda (x)
-                        (message (concat "<<<<<" (type-of x) ">>>>>"))
-                        (insert "#<buffer" (buffer-name x) ">"))
-                      jedahu-esh-buffers-list))
-      (helm :sources '(jedahu-esh-buffers-list
-                       helm-source-ido-virtual-buffers
-                       helm-source-buffer-not-found)
-            :buffer "*helm buffers*"
-            :truncate-lines t
-            'filtered-candidate-transformer (lambda (candidates sources)
-                                              (mapcar #'buffer-name candidates))))
-
-    (defun jedahu-eshell-complete-at-point ()
-      (interactive)
-      (if (looking-back "#<buffer ")
-          (let* ((len (length "#<buffer "))
-                 (beg (- (point) len))
-                 (end (point)))
-            (unwind-protect
-                (with-helm-show-completion beg end
-                  (jedahu-helm-buffer-names-list))))
-        (helm-esh-pcomplete)))
-
-    (defun jedahu-add-to-eshell-local-map ()
-      "Bizarrely, eshell-mode-map is buffer local."
-      (define-key eshell-mode-map
-        [remap eshell-pcomplete] 'helm-esh-pcomplete)
-      (define-key eshell-mode-map
-        (kbd "<tab>") 'jedahu-eshell-complete-at-point))
-
     (spacemacs|define-micro-state eshell-scroll
       :doc "[,] prev [.] next"
       :execute-binding-on-enter t
@@ -493,14 +550,112 @@ layers configuration."
       "ip" 'eshell-insert-process
       "ie" 'eshell-insert-envvar
       "," 'spacemacs/eshell-scroll-micro-state
-      "." 'spacemacs/eshell-scroll-micro-state)
+      "." 'spacemacs/eshell-scroll-micro-state))
 
-    (add-hook 'eshell-mode-hook 'jedahu-add-to-eshell-local-map))
+;;;;; flow
+  (with-eval-after-load 'js2-mode
+    (defun jdh-flow-type-at-pos ()
+      "show type"
+      (interactive)
+      (let ((file (buffer-file-name))
+            (line (line-number-at-pos))
+            (col (current-column))
+            (tmpf (make-temp-file "code"))
+            (code (buffer-string)))
+        (with-temp-file tmpf (insert code))
+        (with-temp-buffer
+          (shell-command (format "%s start" flow-executable))
+          (shell-command
+           (format "%s type-at-pos --from emacs %d %d < %s" flow-executable line (1+ col) tmpf)
+           (current-buffer))
+          (goto-char (point-min))
+          (end-of-line)
+          (message (buffer-substring-no-properties (point-min) (point))))))
+
+    (defun jdh-flow-stop ()
+      (interactive)
+      (shell-command (format "%s stop" flow-executable)))
+
+    (defun jdh-flow-check ()
+      (interactive)
+      (shell-command (format "%s check" flow-executable)))
+
+    (spacemacs/set-leader-keys-for-major-mode 'js-mode
+      "fc" 'jdh-flow-check
+      "fs" 'jdh-flow-stop
+      "ft" 'jdh-flow-type-at-pos)
+
+    (spacemacs/set-leader-keys-for-major-mode 'js2-mode
+      "fc" 'jdh-flow-check
+      "fs" 'jdh-flow-stop
+      "ft" 'jdh-flow-type-at-pos))
+
+;;;;; flycheck
+  ;; (with-eval-after-load 'flycheck
+  ;;   (require 'flycheck-flow)
+  ;;   (add-hook 'js-mode-hook 'flycheck-mode))
 
 ;;;;; Helm
   (with-eval-after-load 'helm
     (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
-    (define-key helm-map (kbd "<S-return>") 'helm-select-action))
+    (define-key helm-map (kbd "<S-return>") 'helm-select-action)
+
+    (defvar jdh--helm-evil-markers-candidate nil)
+
+    (defun jdh--helm-evil-goto-mark-line ()
+      (interactive)
+      (let* ((candidates (gethash "evil-markers" helm-candidate-cache))
+             (keys (recent-keys))
+             (k (elt keys (- (length keys) 1)))
+             (candidate (assoc-default k candidates (lambda (x y) (eq y (string-to-char x))))))
+        (setq jdh--helm-evil-markers-candidate candidate)
+        (helm-exit-and-execute-action
+         (lambda (_)
+           (switch-to-buffer (marker-buffer jdh--helm-evil-markers-candidate))
+           (goto-char (marker-position jdh--helm-evil-markers-candidate))))))
+
+    (setq helm-evil-markers-map
+      (let ((map (make-sparse-keymap)))
+        (set-keymap-parent map helm-map)
+        (dolist (k (string-to-list "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+          (define-key map (string k) 'jdh--helm-evil-goto-mark-line))
+        (delq nil map)))
+
+    (defun helm-evil-markers ()
+      (interactive)
+      (helm :sources (helm-build-sync-source "evil-markers"
+                       :candidates
+                       (mapcar (lambda (x)
+                                 (destructuring-bind (k . v) x
+                                   (let* ((m (if (consp v)
+                                                 (set-marker (make-marker) (cdr v) (or (find-buffer-visiting (car v))
+                                                                                       (find-file-noselect (car v))))
+                                               v))
+                                          (buf (marker-buffer m)))
+                                     (cons
+                                      (concat (string k) " "
+                                              (buffer-name buf) " "
+                                              (with-current-buffer buf
+                                                (save-excursion
+                                                  (goto-char (marker-position m))
+                                                  (buffer-substring (point-at-bol) (point-at-eol)))))
+                                      m))))
+                               (map-filter (lambda (k v)
+                                             (or (markerp v) (and (consp v) (not (eq 'lambda (car v))))))
+                                           (default-value 'evil-markers-alist)))
+                       :action '(("Visit" . (lambda (candidate)
+                                              (switch-to-buffer (marker-buffer candidate))
+                                              (goto-char (marker-position candidate)))))
+                       :persistent-action (lambda (candidate)
+                                            (helm-switch-to-buffers (marker-buffer candidate))
+                                            (helm-goto-char (marker-position candidate))
+                                            (helm-highlight-current-line))
+                       :fuzzy-match t
+                       :keymap 'helm-evil-markers-map)
+            :resume 'noresume
+            :buffer "*helm evil-markers*"
+            ))
+    )
 
 ;;;;; ispell
   (with-eval-after-load 'ispell
@@ -517,15 +672,75 @@ layers configuration."
     (setq ispell-local-dictionary-alist ispell-dictionary-alist)
     (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist))
 
+;;;;; javascript
+  (with-eval-after-load 'js2-mode
+    (defun jdh--js-mode-setup ()
+      (spacemacs/toggle-auto-completion-on)
+      (save-excursion
+        (goto-char 0)
+        (when (ignore-errors (re-search-forward "^// *@flow\\>"))
+          (setq company-backends '(company-flow)))))
+
+    (defun jdh--js2-mode-setup ()
+      (js2-mode-hide-warnings-and-errors))
+
+    (evil-define-key 'insert js-mode-map
+      "\t" 'company-indent-or-complete-common)
+
+    (evil-define-key 'insert js2-mode-map
+      "\t" 'company-indent-or-complete-common)
+
+    (add-hook 'js-mode-hook 'jdh--js-mode-setup t)
+    (add-hook 'js2-mode-hook 'jdh--js-mode-setup t)
+    (add-hook 'js2-mode-hook 'jdh--js2-mode-setup t))
+
 ;;;;; Markdown
   (with-eval-after-load 'markdown-mode
-    (add-hook 'markdown-mode-hook 'visual-line-mode)
+
+    (defun jdh--markdown-fontify-links (limit)
+      "Fontify inline src."
+      (when (re-search-forward "\\(\\[\\)\\(.+?\\)\\(\\]\\)\\((.+?)\\)" limit t)
+        ;; (add-text-properties
+        ;;  (match-beginning 0) (match-end 0)
+        ;;  '(font-lock-fontified t face org-code))
+        (when jdh-markdown-hide-inline-markers
+          (add-text-properties (match-beginning 4) (match-end 4)
+                               '(invisible t))
+          (add-text-properties (match-beginning 3) (match-end 3)
+                               '(invisible t))
+          (add-text-properties (match-beginning 1) (match-end 1)
+                               '(invisible t)))
+        ;; (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+        t))
+
+    (defun jdh--markdown-fixed-height-headings ()
+      (dolist (face '(markdown-header-face
+                      markdown-header-face-1
+                      markdown-header-face-2
+                      markdown-header-face-3
+                      markdown-header-face-4
+                      markdown-header-face-5
+                      markdown-header-face-6))
+        (set-face-attribute face nil :height 1.0)))
+
+    (defun jdh--setup-markdown ()
+      (add-to-list 'font-lock-extra-managed-props 'invisible)
+      (jdh--markdown-fixed-height-headings)
+      (font-lock-add-keywords nil
+                              '((jdh--markdown-fontify-links))
+                              t))
+
+    (add-hook 'markdown-mode-hook 'jdh--setup-markdown)
     (set-face-attribute 'markdown-comment-face nil :strike-through nil))
 
 ;;;;; Misc
   (with-eval-after-load 'compile
-    (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
-           compilation-error-regexp-alist))
+    (add-to-list 'compilation-error-regexp-alist-alist
+                 '(flow "^\\([^:\n]+\\):\\([0-9]+\\)$" 1 2))
+    (setq compilation-error-regexp-alist '(flow))
+    ;; (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
+    ;;          compilation-error-regexp-alist)
+    )
 
   (with-eval-after-load 'lisp-mode
     (add-hook 'emacs-lisp-mode-hook 'outline-minor-mode))
@@ -547,6 +762,8 @@ layers configuration."
 
 ;;;;; Org
   (with-eval-after-load 'org
+    (require 'org-agenda)
+
     (defun jdh--org-fontify-inline-src (limit)
       "Fontify inline src."
       (when (re-search-forward "\\(\\<src_[a-z]+?{\\)[^{]+?\\(}\\)" limit t)
@@ -631,15 +848,49 @@ layers configuration."
     (spacemacs/set-leader-keys-for-major-mode 'org-mode
       "otm" 'jdh-org-toggle-macro-markup
       "ote" 'jdh-org-toggle-emphasis-markup
-      "ots" 'jdh-org-toggle-inline-src-markup)
+      "ots" 'jdh-org-toggle-inline-src-markup
+      "B" 'org-tree-to-indirect-buffer
+      "b" nil
+      "bx" 'org-babel-execute-src-block
+      "br" 'org-babel-remove-result-one-or-many
+      "bt" (ilambda () (org-babel-tangle '(4)))
+      "bp" 'org-babel-pop-to-session-maybe)
 
     (add-hook 'org-mode-hook 'jdh--org-mode-setup))
+
+;;;;;; Org babel
+  (with-eval-after-load 'ob
+    (load-file "~/.emacs.d/ob-typescript.el")
+    (require 'ob-typescript)
+    (load-file "~/.emacs.d/ob-flowtype.el")
+    (require 'ob-flowtype))
+
+;;;;;; Org tree slide
+  (with-eval-after-load 'org-tree-slide
+    (spacemacs/set-leader-keys-for-minor-mode 'org-tree-slide-mode
+      "Z" 'org-tree-slide-content))
 
 ;;;;; outshine
   (use-package outshine
     :defer t
     :commands (outshine-cycle-buffer outshine-hook-function)
-    ))
+    )
+
+;;;;; persp
+  (with-eval-after-load 'persp-mode
+    (defun jdh-persp-remove-killed-buffers ()
+      (interactive)
+      (mapc #'(lambda (p)
+                (when p
+                  (setf (persp-buffers p)
+                        (delete-if-not #'buffer-live-p (persp-buffers p)))))
+            (persp-persps))))
+
+;;;;; smartparens
+  (with-eval-after-load 'smartparens
+    (spacemacs/toggle-smartparens-globally-off)
+    (dolist (x '("(" "[" "'" "\"" "`"))
+      (sp-pair x nil :actions :rem))))
 
 ;;; Custom
 ;; Do not write anything past this comment. This is where Emacs will
@@ -649,14 +900,16 @@ layers configuration."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(bmkp-last-as-first-bookmark-file "c:/Users/Jeremy.hughes/.emacs.d/.cache/bookmarks")
  '(column-number-mode t)
  '(custom-safe-themes
    (quote
     ("bffa9739ce0752a37d9b1eee78fc00ba159748f50dc328af4be661484848e476" default)))
+ '(helm-source-names-using-follow (quote ("evil-markers" "mark-ring")))
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (insert-shebang hide-comnt mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
  '(tool-bar-mode nil))
 (custom-set-faces
@@ -664,4 +917,6 @@ layers configuration."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "DejaVu Sans Mono" :foundry "unknown" :slant normal :weight normal :height 83 :width normal)))))
+ '(default ((t (:family "DejaVu Sans Mono" :foundry "unknown" :slant normal :weight normal :height 83 :width normal))))
+ '(company-tooltip-common ((t (:inherit company-tooltip :weight bold :underline nil))))
+ '(company-tooltip-common-selection ((t (:inherit company-tooltip-selection :weight bold :underline nil)))))
