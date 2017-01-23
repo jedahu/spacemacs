@@ -22,7 +22,6 @@
       fsharp
       git
       gnus
-      gtags
       haskell
       html
       javascript
@@ -54,6 +53,7 @@
    dotspacemacs-excluded-packages
    '(haskell-yas
      org-bullets
+     smartparens
      which-function-mode
      toc-org)
    ))
@@ -91,7 +91,6 @@ before layers configuration."
    dotspacemacs-inactive-transparency 90
    dotspacemacs-mode-line-unicode-symbols t
    dotspacemacs-smooth-scrolling t
-   dotspacemacs-smartparens-strict-mode t
    dotspacemacs-persistent-server nil
    dotspacemacs-default-package-repository nil
 
@@ -767,6 +766,7 @@ layers configuration."
 
   (with-eval-after-load 'outline
     (require 'outshine)
+    (diminish 'outline-minor-mode)
     (add-hook 'outline-minor-mode-hook 'outshine-hook-function))
 
 ;;;;; nix-mode
@@ -859,11 +859,12 @@ layers configuration."
       (jdh-fontify-region-or-buffer))
 
     (spacemacs/set-leader-keys-for-major-mode 'org-mode
+      "occ" 'org-columns
+      "ocq" 'org-columns-quit
       "otm" 'jdh-org-toggle-macro-markup
       "ote" 'jdh-org-toggle-emphasis-markup
       "ots" 'jdh-org-toggle-inline-src-markup
       "B" 'org-tree-to-indirect-buffer
-      "b" nil
       "bx" 'org-babel-execute-src-block
       "br" 'org-babel-remove-result-one-or-many
       "bt" (ilambda () (org-babel-tangle '(4)))
@@ -899,11 +900,12 @@ layers configuration."
                         (delete-if-not #'buffer-live-p (persp-buffers p)))))
             (persp-persps))))
 
-;;;;; smartparens
-  (with-eval-after-load 'smartparens
-    (spacemacs/toggle-smartparens-globally-off)
-    (dolist (x '("(" "[" "'" "\"" "`"))
-      (sp-pair x nil :actions :rem))))
+;;;;; spaceline
+  (with-eval-after-load 'spaceline
+    (spaceline-toggle-buffer-encoding-abbrev-off)
+    (spaceline-toggle-buffer-size-off)
+    (spaceline-toggle-buffer-position-off))
+  )
 
 ;;; Custom
 ;; Do not write anything past this comment. This is where Emacs will
