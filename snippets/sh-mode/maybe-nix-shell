@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: maybe-nix-shell
+# key: nix
+# --
+if [[ ! "\$IN_NIX_SHELL" ]] && type -P nix-shell >/dev/null
+then
+    exec nix-shell -p $1 --run "\$0 $*"
+fi

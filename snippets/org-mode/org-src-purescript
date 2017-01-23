@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: src purescript
+# key: sp
+# --
+src_purescript{$1

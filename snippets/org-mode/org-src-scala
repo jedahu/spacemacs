@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: org src_scala
+# key: ss
+# --
+src_scala{$1
