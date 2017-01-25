@@ -253,6 +253,8 @@ layers configuration."
   (setq org-html-htmlize-output-type 'css)
   (setq org-log-done 'time)
   (setq org-log-into-drawer t)
+  (setq org-pomodoro-format ":%s")
+  (setq org-pomodoro-time-format "%.2m")
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
   (setq org-tags-column -80)
@@ -266,15 +268,16 @@ layers configuration."
   (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
   (setq spacemacs-theme-org-height nil)
+  (setq spacemacs-theme-org-agenda-height nil)
   (setq tab-width 4)
   (setq user-mail-address "jedahu@gmail.com")
   (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
 
 ;;;;; Conditional
   (when os-mswin?
-    (setq
-     tramp-default-method "plink"
-     ))
+    (setq org-pomodoro-audio-player "sounder")
+    (setq tramp-default-method "plink")
+    )
 
 ;;;; Global modes
   (evil-vimish-fold-mode 1)
@@ -380,7 +383,6 @@ layers configuration."
 
 ;;;; Lists
   (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
-  (add-to-list 'auto-mode-alist '("\\.es\\'" . js2-mode))
 
   (add-to-list 'evil-fold-list
                '((hs-minor-mode)
@@ -680,7 +682,7 @@ layers configuration."
     (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist))
 
 ;;;;; javascript
-  (with-eval-after-load 'js2-mode
+  (with-eval-after-load 'js
     (defun jdh--js-mode-setup ()
       (spacemacs/toggle-auto-completion-on)
       (outline-minor-mode 1)
@@ -701,6 +703,95 @@ layers configuration."
     (add-hook 'js-mode-hook 'jdh--js-mode-setup t)
     (add-hook 'js2-mode-hook 'jdh--js-mode-setup t)
     (add-hook 'js2-mode-hook 'jdh--js2-mode-setup t)
+
+;;;;;; overrides
+    (defun jdh--js--proper-indentation (_ parse-status)
+      "Return the proper indentation for the current line."
+      (save-excursion
+        (back-to-indentation)
+        (cond ((nth 4 parse-status)    ; inside comment
+               (js--get-c-offset 'c (nth 8 parse-status)))
+              ((nth 3 parse-status) 0) ; inside string
+              ((eq (char-after) ?#) 0)
+              ((save-excursion (js--beginning-of-macro)) 4)
+              ;; Indent array comprehension continuation lines specially.
+              ((let ((bracket (nth 1 parse-status))
+                     beg)
+                 (and bracket
+                      (not (js--same-line bracket))
+                      (setq beg (js--indent-in-array-comp bracket))
+                      ;; At or after the first loop?
+                      (>= (point) beg)
+                      (js--array-comp-indentation bracket beg))))
+              ((js--ctrl-statement-indentation))
+              ((js--multi-line-declaration-indentation))
+              ((nth 1 parse-status)
+               ;; A single closing paren/bracket should be indented at the
+               ;; same level as the opening statement. Same goes for
+               ;; "case" and "default".
+               (let ((same-indent-p (looking-at "[]})]\\||}")) ;; JDH modified regex
+                     (switch-keyword-p (looking-at "default\\_>\\|case\\_>[^:]"))
+                     (continued-expr-p (js--continued-expression-p)))
+                 (goto-char (nth 1 parse-status)) ; go to the opening char
+                 (if (looking-at "\\([({[]\\|{|\\)\\s-*\\(/[/*]\\|$\\)") ;; JDH modified regex
+                     (progn ; nothing following the opening paren/bracket
+                       (skip-syntax-backward " ")
+                       (when (eq (char-before) ?\)) (backward-list))
+                       (back-to-indentation)
+                       (js--maybe-goto-declaration-keyword-end parse-status)
+                       (let* ((in-switch-p (unless same-indent-p
+                                             (looking-at "\\_<switch\\_>")))
+                              (same-indent-p (or same-indent-p
+                                                 (and switch-keyword-p
+                                                      in-switch-p)))
+                              (indent
+                               (cond (same-indent-p
+                                      (current-column))
+                                     (continued-expr-p
+                                      (+ (current-column) (* 2 js-indent-level)
+                                         js-expr-indent-offset))
+                                     (t
+                                      (+ (current-column) js-indent-level
+                                         (pcase (char-after (nth 1 parse-status))
+                                           (?\( js-paren-indent-offset)
+                                           (?\[ js-square-indent-offset)
+                                           (?\{ js-curly-indent-offset)))))))
+                         (if in-switch-p
+                             (+ indent js-switch-indent-offset)
+                           indent)))
+                   ;; If there is something following the opening
+                   ;; paren/bracket, everything else should be indented at
+                   ;; the same level.
+                   (unless same-indent-p
+                     (forward-char)
+                     (skip-chars-forward " \t"))
+                   (current-column))))
+
+              ((js--continued-expression-p)
+               (+ js-indent-level js-expr-indent-offset))
+              (t 0))))
+
+    (defun jdh--js--looking-at-operator-p (_)
+      "Return non-nil if point is on a JavaScript operator, other than a comma."
+      (save-match-data
+        (and (looking-at js--indent-operator-re)
+             (not (and (looking-at "|") (eq ?\{ (char-before)))) ;; JDH added
+             (or (not (eq (char-after) ?:))
+                 (save-excursion
+                   (and (js--re-search-backward "[?:{]\\|\\_<case\\_>" nil t)
+                        (eq (char-after) ??))))
+             (not (and
+                   (eq (char-after) ?*)
+                   ;; Generator method (possibly using computed property).
+                   (looking-at (concat "\\* *\\(?:\\[\\|" js--name-re " *(\\)"))
+                   (save-excursion
+                     (js--backward-syntactic-ws)
+                     ;; We might misindent some expressions that would
+                     ;; return NaN anyway.  Shouldn't be a problem.
+                     (memq (char-before) '(?, ?} ?{))))))))
+
+    (advice-add 'js--proper-indentation :around #'jdh--js--proper-indentation)
+    (advice-add 'js--looking-at-operator-p :around #'jdh--js--looking-at-operator-p)
     )
 
 ;;;;; Markdown
@@ -865,12 +956,14 @@ layers configuration."
       "ote" 'jdh-org-toggle-emphasis-markup
       "ots" 'jdh-org-toggle-inline-src-markup
       "B" 'org-tree-to-indirect-buffer
+      "b" nil
       "bx" 'org-babel-execute-src-block
       "br" 'org-babel-remove-result-one-or-many
       "bt" (ilambda () (org-babel-tangle '(4)))
       "bp" 'org-babel-pop-to-session-maybe)
 
-    (add-hook 'org-mode-hook 'jdh--org-mode-setup))
+    (add-hook 'org-mode-hook 'jdh--org-mode-setup)
+    )
 
 ;;;;;; Org babel
   (with-eval-after-load 'ob
@@ -901,7 +994,7 @@ layers configuration."
             (persp-persps))))
 
 ;;;;; spaceline
-  (with-eval-after-load 'spaceline
+  (with-eval-after-load 'spaceline-segments
     (spaceline-toggle-buffer-encoding-abbrev-off)
     (spaceline-toggle-buffer-size-off)
     (spaceline-toggle-buffer-position-off))
@@ -926,6 +1019,12 @@ layers configuration."
    (quote
     (insert-shebang hide-comnt mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
+ '(safe-local-variable-values
+   (quote
+    ((org-babel-default-header-args:typescript
+      (:cmdline . "--noImplicitAny --strictNullChecks --pretty")
+      (:wrap . "ANSI"))
+     (org-confirm-babel-evaluate))))
  '(tool-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
