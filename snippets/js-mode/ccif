@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: ccif
+# key: #if
+# --
+//#if ${1:_TEST}
+$0
+//#endif

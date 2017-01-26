@@ -171,7 +171,7 @@ layers configuration."
            :open show-ifdef-block
            :open-rec nil
            :close hide-ifdef-block)
-          ((outline-mode outline-minor-mode org-mode markdown-mode)
+          ((outline-mode org-mode markdown-mode)
            :open-all show-all
            :close-all #[nil "\300\301!\207" [hide-sublevels 1] 2]
            :toggle outline-toggle-children
@@ -250,7 +250,21 @@ layers configuration."
   (setq org-hide-inline-src-markers t)
   (setq org-hide-leading-starts nil)
   (setq org-hide-macro-markers t)
+  (setq org-html-head "<link rel=stylesheet type=text/css href=org-info.css>")
   (setq org-html-htmlize-output-type 'css)
+  (setq org-html-use-infojs t)
+  (setq org-html-infojs-options
+        '((path . "org-info.js")
+          (view . "overview")
+          (toc . "nil")
+          (ftoc . "0")
+          (tdepth . "max")
+          (sdepth . "max")
+          (mouse . "#eeeeee")
+          (buttons . "0")
+          (ltoc . "nil")
+          (up . :html-link-up)
+          (home . :html-link-home)))
   (setq org-log-done 'time)
   (setq org-log-into-drawer t)
   (setq org-pomodoro-format ":%s")
@@ -286,8 +300,8 @@ layers configuration."
 ;;;; File types
   (add-to-list 'auto-mode-alist '("\\.es\\.flow\\'" . js-mode))
   (add-to-list 'auto-mode-alist '("\\.es\\'" . js-mode))
-  (add-to-list 'auto-mode-alist '("\\.js\\.flow\\'" . js2-mode))
-  (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.js\\.flow\\'" . js-mode))
+  (add-to-list 'auto-mode-alist '("\\.js\\'" . js-mode))
   (add-to-list 'auto-mode-alist '("/\\.babelrc\\'" . json-mode))
   (add-to-list 'auto-mode-alist '("/\\.flowconfig\\'" . ini-generic-mode))
 
@@ -600,9 +614,9 @@ layers configuration."
       "ft" 'jdh-flow-type-at-pos))
 
 ;;;;; flycheck
-  ;; (with-eval-after-load 'flycheck
-  ;;   (require 'flycheck-flow)
-  ;;   (add-hook 'js-mode-hook 'flycheck-mode))
+  (with-eval-after-load 'flycheck
+    (require 'flycheck-flow)
+    (add-hook 'js-mode-hook 'flycheck-mode))
 
 ;;;;; Helm
   (with-eval-after-load 'helm
@@ -689,7 +703,7 @@ layers configuration."
       (save-excursion
         (goto-char 0)
         (when (ignore-errors (re-search-forward "^// *@flow\\>"))
-          (setq company-backends '(company-flow)))))
+          (setq company-backends '(company-yasnippet company-flow)))))
 
     (defun jdh--js2-mode-setup ()
       (js2-mode-hide-warnings-and-errors))
@@ -949,6 +963,18 @@ layers configuration."
       (setq org-hide-inline-src-markers (not org-hide-inline-src-markers))
       (jdh-fontify-region-or-buffer))
 
+    (defun jdh--org-maybe-export ()
+      (when (and
+             (eq major-mode 'org-mode)
+             (save-excursion
+               (goto-char 0)
+               (re-search-forward "^#\\+AUTOEXPORT\\b" nil t)))
+        (org-html-export-to-html)))
+
+    (defun jdh--org-update-blocks ()
+      (when (eq major-mode 'org-mode)
+        (org-update-all-dblocks)))
+
     (spacemacs/set-leader-keys-for-major-mode 'org-mode
       "occ" 'org-columns
       "ocq" 'org-columns-quit
@@ -963,6 +989,8 @@ layers configuration."
       "bp" 'org-babel-pop-to-session-maybe)
 
     (add-hook 'org-mode-hook 'jdh--org-mode-setup)
+    (add-hook 'before-save-hook 'jdh--org-update-blocks)
+    (add-hook 'after-save-hook 'jdh--org-maybe-export)
     )
 
 ;;;;;; Org babel
