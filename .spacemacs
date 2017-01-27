@@ -195,6 +195,7 @@ layers configuration."
            :close #[nil "\300p`\"\207" [origami-close-node] 3])))
   (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
   (setq flow-executable "flow")
+  (setq flow-common-args '("--quiet" "--from" "emacs"))
   (setq flycheck-display-errors-function
         #'flycheck-display-error-messages-unless-error-list)
   (setq flycheck-javascript-flow-executable flow-executable)
@@ -389,6 +390,25 @@ layers configuration."
     (outline-show-entry)
     (outline-show-children))
 
+  (defun jdh-sp-get-quoted-string-bounds (&optional point)
+    "Return the bounds of the string around POINT.
+
+POINT defaults to `point'.
+
+If the point is not inside a quoted string, return nil."
+    (setq point (or point (point)))
+    (save-excursion
+      (goto-char point)
+      (let ((parse-data (syntax-ppss)))
+        (when (nth 3 parse-data)
+          (let* ((open (nth 8 parse-data))
+                 (close (save-excursion
+                          (parse-partial-sexp
+                           (point) (point-max)
+                           nil nil parse-data 'syntax-table)
+                          (point))))
+            (cons open close))))))
+
 ;;;; Modes
   (define-derived-mode ansi-mode fundamental-mode "ansi"
     "Fundamental mode that understands ANSI colors."
@@ -576,24 +596,68 @@ layers configuration."
       "." 'spacemacs/eshell-scroll-micro-state))
 
 ;;;;; flow
-  (with-eval-after-load 'js2-mode
+  (with-eval-after-load 'js
+    (require 'json)
+
     (defun jdh-flow-type-at-pos ()
       "show type"
       (interactive)
-      (let ((file (buffer-file-name))
+      (let ((buf (current-buffer))
+            (file (buffer-file-name))
             (line (line-number-at-pos))
-            (col (current-column))
-            (tmpf (make-temp-file "code"))
-            (code (buffer-string)))
-        (with-temp-file tmpf (insert code))
+            (col (current-column)))
         (with-temp-buffer
-          (shell-command (format "%s start" flow-executable))
-          (shell-command
-           (format "%s type-at-pos --from emacs %d %d < %s" flow-executable line (1+ col) tmpf)
-           (current-buffer))
-          (goto-char (point-min))
-          (end-of-line)
-          (message (buffer-substring-no-properties (point-min) (point))))))
+          (let ((tbuf (current-buffer)))
+            (with-current-buffer buf
+              (apply #'call-process-region
+                     `(nil nil ,flow-executable nil (,tbuf t) nil
+                           "type-at-pos" ,@flow-common-args
+                           "--path" ,file
+                           ,(prin1-to-string line) ,(prin1-to-string (1+ col)))))
+            (message (buffer-substring-no-properties (point-min) (point)))))))
+
+    (defun jdh-flow-goto-def-at-point ()
+      "goto def"
+      (interactive)
+      (let ((buf (current-buffer))
+            (file (buffer-file-name))
+            (line (line-number-at-pos))
+            (col (current-column)))
+        (with-temp-buffer
+          (let ((tbuf (current-buffer))
+                (json-object-type 'alist))
+            (with-current-buffer buf
+              (apply #'call-process-region
+                     `(nil nil ,flow-executable nil (,tbuf t) nil
+                           "get-def" ,@flow-common-args
+                           "--path" ,file
+                           "--json"
+                           ,(prin1-to-string line) ,(prin1-to-string (1+ col)))))
+            (goto-char (point-min))
+            (let* ((obj (json-read))
+                   (buf (find-file-existing (alist-get 'path obj))))
+              (goto-char (point-min))
+              (forward-line (1- (alist-get 'line obj)))
+              (move-to-column (1- (alist-get 'start obj))))))))
+
+    (defun jdh-flow-goto-module-at-point ()
+      "goto module file"
+      (interactive)
+      (if (nth 3 (syntax-ppss)) ; point is in string
+          (let* ((buf (current-buffer))
+                 (file (buffer-file-name))
+                 (bounds (jdh-sp-get-quoted-string-bounds))
+                 (ref (buffer-substring-no-properties (1+ (car bounds)) (1- (cdr bounds)))))
+            (with-temp-buffer
+              (let ((tbuf (current-buffer)))
+                (with-current-buffer buf
+                  (apply #'call-process
+                         `(,flow-executable nil (,tbuf t) nil
+                               "find-module" ,@flow-common-args
+                               ,ref ,file)))
+                (end-of-line (point-min))
+                (message "<%s>" (buffer-substring-no-properties (point-min) (1- (point))))
+                (find-file-existing (buffer-substring-no-properties (point-min) (1- (point)))))))))
 
     (defun jdh-flow-stop ()
       (interactive)
@@ -606,7 +670,10 @@ layers configuration."
     (spacemacs/set-leader-keys-for-major-mode 'js-mode
       "fc" 'jdh-flow-check
       "fs" 'jdh-flow-stop
-      "ft" 'jdh-flow-type-at-pos)
+      "ft" 'jdh-flow-type-at-pos
+      "fj" nil
+      "fjd" 'jdh-flow-goto-def-at-point
+      "fjm" 'jdh-flow-goto-module-at-point)
 
     (spacemacs/set-leader-keys-for-major-mode 'js2-mode
       "fc" 'jdh-flow-check
@@ -616,6 +683,7 @@ layers configuration."
 ;;;;; flycheck
   (with-eval-after-load 'flycheck
     (require 'flycheck-flow)
+    (flycheck-add-next-checker 'javascript-flow 'javascript-flow-coverage)
     (add-hook 'js-mode-hook 'flycheck-mode))
 
 ;;;;; Helm
