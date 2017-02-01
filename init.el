@@ -1,6 +1,6 @@
 ;;; init.el --- Spacemacs Initialization File
 ;;
-;; Copyright (c) 2012-2016 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2017 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -28,9 +28,8 @@
                      "core/core-load-paths.el"))
   (require 'core-spacemacs)
   (spacemacs/init)
-  (spacemacs/maybe-install-dotfile)
   (configuration-layer/sync)
-  (spacemacs-buffer/display-info-box)
+  (spacemacs-buffer/display-startup-note)
   (spacemacs/setup-startup-hook)
   (require 'server)
   (unless (server-running-p) (server-start)))
