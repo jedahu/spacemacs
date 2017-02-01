@@ -18,6 +18,7 @@
 
 (defconst spacemacs-version          "0.200.7" "Spacemacs version.")
 (defconst spacemacs-emacs-min-version   "24.4" "Minimal version of Emacs.")
+(defconst dotspacemacs-filepath "~/.emacs.d/.spacemacs")
 
 (if (not (version<= spacemacs-emacs-min-version emacs-version))
     (message (concat "Your version of Emacs (%s) is too old. "
