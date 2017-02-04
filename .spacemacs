@@ -70,7 +70,8 @@ before layers configuration."
    dotspacemacs-themes '(spacemacs-dark
                          solarized-dark
                          solarized-light
-                         material)
+                         material
+                         default)
    dotspacemacs-default-font '("Source Code Pro"
                                :size 8.0
                                :weight normal
@@ -101,6 +102,7 @@ before layers configuration."
      company-flow
      csharp-mode
      dired-narrow
+     dizzee
      evil-vimish-fold
      flycheck-flow
      git-gutter
@@ -133,7 +135,6 @@ layers configuration."
 
 ;;;; Require
   (require 'generic-x)
-
 
 ;;;; Setq
 ;;;;; Global
@@ -195,9 +196,10 @@ layers configuration."
            :close #[nil "\300p`\"\207" [origami-close-node] 3])))
   (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
   (setq flow-executable "flow")
-  (setq flow-common-args '("--quiet" "--from" "emacs"))
+  (setq flow-common-args '("--quiet" "--no-auto-start" "--show-all-errors"))
   (setq flycheck-display-errors-function
         #'flycheck-display-error-messages-unless-error-list)
+  (setq flycheck-javascript-flow-args '("--no-auto-start"))
   (setq flycheck-javascript-flow-executable flow-executable)
   (setq flycheck-pos-tip-timeout 999)
   (setq flycheck-standard-error-navigation t)
@@ -390,24 +392,7 @@ layers configuration."
     (outline-show-entry)
     (outline-show-children))
 
-  (defun jdh-sp-get-quoted-string-bounds (&optional point)
-    "Return the bounds of the string around POINT.
-
-POINT defaults to `point'.
-
-If the point is not inside a quoted string, return nil."
-    (setq point (or point (point)))
-    (save-excursion
-      (goto-char point)
-      (let ((parse-data (syntax-ppss)))
-        (when (nth 3 parse-data)
-          (let* ((open (nth 8 parse-data))
-                 (close (save-excursion
-                          (parse-partial-sexp
-                           (point) (point-max)
-                           nil nil parse-data 'syntax-table)
-                          (point))))
-            (cons open close))))))
+;;;; Services
 
 ;;;; Modes
   (define-derived-mode ansi-mode fundamental-mode "ansi"
@@ -455,6 +440,9 @@ If the point is not inside a quoted string, return nil."
   (evil-leader/set-key "aocg" 'org-clock-goto)
   (evil-leader/set-key "aoct" 'org-clock-select-task)
   (evil-leader/set-key "aoco" 'org-clock-out)
+  (evil-leader/set-key "afs" 'jdh-flow-server)
+  (evil-leader/set-key "afc" 'jdh-flow-quick-check)
+  (evil-leader/set-key "afC" 'jdh-flow-check)
   (evil-leader/set-key "br" 'rename-buffer)
   (evil-leader/set-key "bU" 'bury-buffer)
   (evil-leader/set-key "e," 'flycheck-display-error-at-point)
@@ -599,68 +587,97 @@ If the point is not inside a quoted string, return nil."
       "." 'spacemacs/eshell-scroll-micro-state))
 
 ;;;;; flow
+  (defun jdh-flow-root ()
+    (let ((default-directory (locate-dominating-file buffer-file-name ".flowconfig")))
+      (unless default-directory
+        (error "No .flowconfig found"))
+      default-directory))
+
+  (defun jdh-flow-server ()
+    (interactive)
+    (ansi-color-for-comint-mode-on)
+    (let* ((default-directory (jdh-flow-root))
+           (buf (make-comint (concat "flow " default-directory) flow-executable nil "server")))
+      (pop-to-buffer buf)))
+
+  (defun jdh-flow-compile (name command)
+    (interactive)
+    (let* ((default-directory (jdh-flow-root))
+           (bname (concat "*" name " " default-directory "*"))
+           (buf (get-buffer bname)))
+      (when buf
+        (kill-buffer buf))
+      (with-current-buffer (compile (format "%s %s" flow-executable command))
+        (rename-buffer bname))))
+
+  (defun jdh-flow-quick-check ()
+    (interactive)
+    (jdh-flow-compile
+     "flow status"
+     (string-join (cons "status" flow-common-args) " ")))
+
+  (defun jdh-flow-check ()
+    (interactive)
+    (jdh-flow-compile
+     "flow check"
+     (string-join (cons "check" flow-common-args) " ")))
+
+  (defun jdh-flow-type-at-pos ()
+    "show type"
+    (interactive)
+    (let* ((default-directory (jdh-flow-root))
+           (proc (start-process "flow type-at-pos"
+                                nil
+                                flow-executable
+                                "type-at-pos"
+                                "--path" (buffer-file-name)
+                                "--no-auto-start"
+                                "--quiet"
+                                (prin1-to-string (line-number-at-pos))
+                                (prin1-to-string (1+ (current-column))))))
+      (set-process-filter proc (lambda (_ s) (message s)))
+      (process-send-region proc (point-min) (point-max))
+      (process-send-eof proc)))
+
+  (defun jdh-flow-get-def (callback)
+    "get def location"
+    (lexical-let* ((then callback)
+                   (default-directory (jdh-flow-root))
+                   (json-array-type 'list)
+                   (json-object-type 'alist)
+                   (json-key-type 'symbol)
+                   (proc (start-process "flow get-def"
+                                        nil
+                                        flow-executable
+                                        "get-def"
+                                        "--json"
+                                        "--path" (buffer-file-name)
+                                        "--no-auto-start"
+                                        "--quiet"
+                                        (prin1-to-string (line-number-at-pos))
+                                        (prin1-to-string (1+ (current-column))))))
+      (set-process-filter proc
+                          (lambda (_ s)
+                            (let ((js (json-read-from-string s)))
+                              (funcall then
+                                       (alist-get 'path js)
+                                       (alist-get 'line js)
+                                       (alist-get 'start js)))))
+      (process-send-region proc (point-min) (point-max))
+      (process-send-eof proc)))
+
+  (defun jdh-flow-goto-def ()
+    "goto def location"
+    (interactive)
+    (jdh-flow-get-def (lambda (path line col)
+                        (with-current-buffer (switch-to-buffer
+                                              (or (find-buffer-visiting path)
+                                                  (find-file path)))
+                          (goto-char (point-min))
+                          (forward-line (1- line))
+                          (move-to-column (1- col))))))
+
   (with-eval-after-load 'js
-    (require 'json)
-
-    (defun jdh-flow-type-at-pos ()
-      "show type"
-      (interactive)
-      (let ((buf (current-buffer))
-            (file (buffer-file-name))
-            (line (line-number-at-pos))
-            (col (current-column)))
-        (with-temp-buffer
-          (let ((tbuf (current-buffer)))
-            (with-current-buffer buf
-              (apply #'call-process-region
-                     `(nil nil ,flow-executable nil (,tbuf t) nil
-                           "type-at-pos" ,@flow-common-args
-                           "--path" ,file
-                           ,(prin1-to-string line) ,(prin1-to-string (1+ col)))))
-            (message (buffer-substring-no-properties (point-min) (point)))))))
-
-    (defun jdh-flow-goto-def-at-point ()
-      "goto def"
-      (interactive)
-      (let ((buf (current-buffer))
-            (file (buffer-file-name))
-            (line (line-number-at-pos))
-            (col (current-column)))
-        (with-temp-buffer
-          (let ((tbuf (current-buffer))
-                (json-object-type 'alist))
-            (with-current-buffer buf
-              (apply #'call-process-region
-                     `(nil nil ,flow-executable nil (,tbuf t) nil
-                           "get-def" ,@flow-common-args
-                           "--path" ,file
-                           "--json"
-                           ,(prin1-to-string line) ,(prin1-to-string (1+ col)))))
-            (goto-char (point-min))
-            (let* ((obj (json-read))
-                   (buf (find-file-existing (alist-get 'path obj))))
-              (goto-char (point-min))
-              (forward-line (1- (alist-get 'line obj)))
-              (move-to-column (1- (alist-get 'start obj))))))))
-
-    (defun jdh-flow-goto-module-at-point ()
-      "goto module file"
-      (interactive)
-      (if (nth 3 (syntax-ppss)) ; point is in string
-          (let* ((buf (current-buffer))
-                 (file (buffer-file-name))
-                 (bounds (jdh-sp-get-quoted-string-bounds))
-                 (ref (buffer-substring-no-properties (1+ (car bounds)) (1- (cdr bounds)))))
-            (with-temp-buffer
-              (let ((tbuf (current-buffer)))
-                (with-current-buffer buf
-                  (apply #'call-process
-                         `(,flow-executable nil (,tbuf t) nil
-                               "find-module" ,@flow-common-args
-                               ,ref ,file)))
-                (end-of-line (point-min))
-                (message "<%s>" (buffer-substring-no-properties (point-min) (1- (point))))
-                (find-file-existing (buffer-substring-no-properties (point-min) (1- (point)))))))))
 
     (defun jdh-flow-stop ()
       (interactive)
@@ -1131,7 +1148,7 @@ If the point is not inside a quoted string, return nil."
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (insert-shebang hide-comnt mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (dizzee insert-shebang hide-comnt mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(paradox-github-token t)
  '(safe-local-variable-values
    (quote
