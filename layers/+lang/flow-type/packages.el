@@ -26,6 +26,7 @@
   (spacemacs|add-company-backends :backends company-flow :modes js2-mode react-mode))
 
 (defun flow-type/post-init-js2-mode()
+  (require 'compile)
   (spacemacs/declare-prefix-for-mode 'js2-mode "mf" "flow" "flow type checker commands")
   (spacemacs/set-leader-keys-for-major-mode 'js2-mode
     "fs" 'flow-type/show-start-server
