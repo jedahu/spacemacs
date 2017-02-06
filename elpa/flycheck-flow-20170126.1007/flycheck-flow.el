@@ -65,6 +65,7 @@ See URL `http://flowtype.org/'."
     :command (
               "flow"
               "check-contents"
+              "--quiet"
               (eval flycheck-javascript-flow-args)
               "--quiet"
               "--from" "emacs"

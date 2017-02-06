@@ -7523,8 +7523,9 @@ Optional arguments START and END can be used to limit the range."
 (defun org-show-block-all ()
   "Unfold all blocks in the current buffer."
   (interactive)
-  (mapc #'delete-overlay org-hide-block-overlays)
-  (setq org-hide-block-overlays nil))
+  (when (sequencep org-hide-block-overlays)
+    (mapc #'delete-overlay org-hide-block-overlays)
+    (setq org-hide-block-overlays nil)))
 
 (defun org-hide-block-toggle-maybe ()
   "Toggle visibility of block at point.

@@ -428,6 +428,9 @@ layers configuration."
                '(js-runtime "\\(?:^[\t ]*at \\|(\\)\\(\\(?:[A-Za-z]:\\)?[^:()\n]+\\):\\([0-9]+\\):\\([0-9]+\\)\\(?:)\\|$\\)" 1 2 3))
   (add-to-list 'compilation-error-regexp-alist 'js-runtime)
 
+  (add-to-list 'outorg-language-name-assocs '(js-mode . js))
+  (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
+
 ;;;;; Hooks
   (add-hook 'focus-out-hook 'save-all)
   ;; (add-hook 'evil-normal-state-entry-hook 'save-buffer)
@@ -1010,6 +1013,21 @@ layers configuration."
     (add-hook 'after-save-hook 'jdh--org-maybe-export)
     )
 
+;;;;;; Outorg
+  (with-eval-after-load 'outorg
+    (defun orgen--outorg-wrap-source-in-block (fun lang &optional _)
+      (funcall fun lang))
+
+    (defun orgen--outorg-in-babel-load-languages-p (fun _) t)
+
+    (advice-add 'outorg-wrap-source-in-block :around 'orgen--outorg-wrap-source-in-block)
+
+    (advice-add 'outorg-in-babel-load-languages-p :around 'orgen--outorg-in-babel-load-languages-p)
+
+    (spacemacs/set-leader-keys-for-minor-mode 'outorg-edit-minor-mode
+      "ooe" 'outorg-copy-edits-and-exit)
+    )
+
 ;;;;;; Org babel
   (with-eval-after-load 'ob
     (load-file "~/.emacs.d/ob-typescript.el")
@@ -1023,9 +1041,9 @@ layers configuration."
       "Z" 'org-tree-slide-content))
 
 ;;;;; outshine
-  (use-package outshine
-    :defer t
-    :commands (outshine-cycle-buffer outshine-hook-function)
+  (with-eval-after-load 'outshine
+    (spacemacs/set-leader-keys-for-minor-mode 'outline-minor-mode
+      "ooe" 'outorg-edit-as-org)
     )
 
 ;;;;; persp
