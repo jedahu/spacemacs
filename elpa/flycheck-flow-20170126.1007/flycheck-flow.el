@@ -113,7 +113,7 @@ See URL `http://flowtype.org/'."
                    :filename buffer-file-name
                    :line (alist-get 'line start)
                    :column (alist-get 'column start)
-                   :message (format "No coverage (to %s:%s)"
+                   :message (format "no-coverage-to (%s . %s)"
                                     (alist-get 'line end)
                                     (alist-get 'column end))
                    :level 'warning)))

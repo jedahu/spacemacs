@@ -19,6 +19,8 @@
                   evil-snipe-enable-alternate-f-and-t-behaviours t
                   evil-snipe-repeat-scope 'whole-buffer)
       extra-langs
+      (flow-type :variables
+                 flow-type/no-auto-start 'process)
       fsharp
       git
       gnus
@@ -99,12 +101,10 @@ before layers configuration."
    dotspacemacs-additional-packages
    '(
      bnfc
-     company-flow
      csharp-mode
      dired-narrow
      dizzee
      evil-vimish-fold
-     flycheck-flow
      git-gutter
      helm-aws
      helm-chrome
@@ -199,6 +199,7 @@ layers configuration."
   (setq flow-common-args '("--quiet" "--no-auto-start" "--show-all-errors"))
   (setq flycheck-display-errors-function
         #'flycheck-display-error-messages-unless-error-list)
+  (setq flycheck-error-list-minimum-level 'error)
   (setq flycheck-javascript-flow-args '("--no-auto-start"))
   (setq flycheck-javascript-flow-executable flow-executable)
   (setq flycheck-pos-tip-timeout 999)
@@ -299,12 +300,14 @@ layers configuration."
 ;;;; Global modes
   (evil-vimish-fold-mode 1)
   (yas-global-mode 1)
+  (global-eldoc-mode -1)
+  (spacemacs/toggle-fill-column-indicator-on)
 
 ;;;; File types
-  (add-to-list 'auto-mode-alist '("\\.es\\.flow\\'" . js-mode))
-  (add-to-list 'auto-mode-alist '("\\.es\\'" . js-mode))
-  (add-to-list 'auto-mode-alist '("\\.js\\.flow\\'" . js-mode))
-  (add-to-list 'auto-mode-alist '("\\.js\\'" . js-mode))
+  (add-to-list 'auto-mode-alist '("\\.es\\.flow\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.es\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.js\\.flow\\'" . js2-mode))
+  (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
   (add-to-list 'auto-mode-alist '("/\\.babelrc\\'" . json-mode))
   (add-to-list 'auto-mode-alist '("/\\.flowconfig\\'" . ini-generic-mode))
 
@@ -421,6 +424,10 @@ layers configuration."
                  :open-rec outline-show-subtree
                  :close outline-hide-subtree))
 
+  (add-to-list 'compilation-error-regexp-alist-alist
+               '(js-runtime "\\(?:^[\t ]*at \\|(\\)\\(\\(?:[A-Za-z]:\\)?[^:()\n]+\\):\\([0-9]+\\):\\([0-9]+\\)\\(?:)\\|$\\)" 1 2 3))
+  (add-to-list 'compilation-error-regexp-alist 'js-runtime)
+
 ;;;;; Hooks
   (add-hook 'focus-out-hook 'save-all)
   ;; (add-hook 'evil-normal-state-entry-hook 'save-buffer)
@@ -437,9 +444,6 @@ layers configuration."
   (evil-leader/set-key "aocg" 'org-clock-goto)
   (evil-leader/set-key "aoct" 'org-clock-select-task)
   (evil-leader/set-key "aoco" 'org-clock-out)
-  (evil-leader/set-key "afs" 'jdh-flow-server)
-  (evil-leader/set-key "afc" 'jdh-flow-quick-check)
-  (evil-leader/set-key "afC" 'jdh-flow-check)
   (evil-leader/set-key "br" 'rename-buffer)
   (evil-leader/set-key "bU" 'bury-buffer)
   (evil-leader/set-key "e," 'flycheck-display-error-at-point)
@@ -451,6 +455,9 @@ layers configuration."
     (kbd "<backtab>") 'outshine-cycle-buffer)
 
   (evil-define-key 'normal js-mode-map
+    (kbd "<backtab>") 'outshine-cycle-buffer)
+
+  (evil-define-key 'normal js2-mode-map
     (kbd "<backtab>") 'outshine-cycle-buffer)
 
   (evil-define-minor-mode-key 'normal 'outline-minor-mode
@@ -583,122 +590,43 @@ layers configuration."
       "," 'spacemacs/eshell-scroll-micro-state
       "." 'spacemacs/eshell-scroll-micro-state))
 
-;;;;; flow
-  (defun jdh-flow-root ()
-    (let ((default-directory (locate-dominating-file buffer-file-name ".flowconfig")))
-      (unless default-directory
-        (error "No .flowconfig found"))
-      default-directory))
-
-  (defun jdh-flow-server ()
-    (interactive)
-    (ansi-color-for-comint-mode-on)
-    (let* ((default-directory (jdh-flow-root))
-           (buf (make-comint (concat "flow " default-directory) flow-executable nil "server")))
-      (pop-to-buffer buf)))
-
-  (defun jdh-flow-compile (name command)
-    (interactive)
-    (let* ((default-directory (jdh-flow-root))
-           (bname (concat "*" name " " default-directory "*"))
-           (buf (get-buffer bname)))
-      (when buf
-        (kill-buffer buf))
-      (with-current-buffer (compile (format "%s %s" flow-executable command))
-        (rename-buffer bname))))
-
-  (defun jdh-flow-quick-check ()
-    (interactive)
-    (jdh-flow-compile
-     "flow status"
-     (string-join (cons "status" flow-common-args) " ")))
-
-  (defun jdh-flow-check ()
-    (interactive)
-    (jdh-flow-compile
-     "flow check"
-     (string-join (cons "check" flow-common-args) " ")))
-
-  (defun jdh-flow-type-at-pos ()
-    "show type"
-    (interactive)
-    (let* ((default-directory (jdh-flow-root))
-           (proc (start-process "flow type-at-pos"
-                                nil
-                                flow-executable
-                                "type-at-pos"
-                                "--path" (buffer-file-name)
-                                "--no-auto-start"
-                                "--quiet"
-                                (prin1-to-string (line-number-at-pos))
-                                (prin1-to-string (1+ (current-column))))))
-      (set-process-filter proc (lambda (_ s) (message s)))
-      (process-send-region proc (point-min) (point-max))
-      (process-send-eof proc)))
-
-  (defun jdh-flow-get-def (callback)
-    "get def location"
-    (lexical-let* ((then callback)
-                   (default-directory (jdh-flow-root))
-                   (json-array-type 'list)
-                   (json-object-type 'alist)
-                   (json-key-type 'symbol)
-                   (proc (start-process "flow get-def"
-                                        nil
-                                        flow-executable
-                                        "get-def"
-                                        "--json"
-                                        "--path" (buffer-file-name)
-                                        "--no-auto-start"
-                                        "--quiet"
-                                        (prin1-to-string (line-number-at-pos))
-                                        (prin1-to-string (1+ (current-column))))))
-      (set-process-filter proc
-                          (lambda (_ s)
-                            (let ((js (json-read-from-string s)))
-                              (funcall then
-                                       (alist-get 'path js)
-                                       (alist-get 'line js)
-                                       (alist-get 'start js)))))
-      (process-send-region proc (point-min) (point-max))
-      (process-send-eof proc)))
-
-  (defun jdh-flow-goto-def ()
-    "goto def location"
-    (interactive)
-    (jdh-flow-get-def (lambda (path line col)
-                        (with-current-buffer (switch-to-buffer
-                                              (or (find-buffer-visiting path)
-                                                  (find-file path)))
-                          (goto-char (point-min))
-                          (forward-line (1- line))
-                          (move-to-column (1- col))))))
-
-  (with-eval-after-load 'js
-
-    (defun jdh-flow-stop ()
-      (interactive)
-      (shell-command (format "%s stop" flow-executable)))
-
-    (defun jdh-flow-check ()
-      (interactive)
-      (shell-command (format "%s check" flow-executable)))
-
-    (spacemacs/set-leader-keys-for-major-mode 'js-mode
-      "fc" 'jdh-flow-check
-      "fs" 'jdh-flow-stop
-      "ft" 'jdh-flow-type-at-pos)
-
-    (spacemacs/set-leader-keys-for-major-mode 'js2-mode
-      "fc" 'jdh-flow-check
-      "fs" 'jdh-flow-stop
-      "ft" 'jdh-flow-type-at-pos))
-
 ;;;;; flycheck
   (with-eval-after-load 'flycheck
-    (require 'flycheck-flow)
+    (defun jdh--flycheck-eslint-to-info (errs)
+      (dolist (e errs)
+        (when (eq 'javascript-eslint (flycheck-error-checker e))
+          (setf (flycheck-error-level e) 'info)))
+      errs)
+
+    (defun jdh--flycheck-flow-coverage-region (fun err mode)
+      (if (and (eq 'javascript-flow-coverage (flycheck-error-checker err))
+               (member mode '(symbols sexps)))
+          (flycheck-error-with-buffer err
+            (save-restriction
+              (save-excursion
+                (message ":widen")
+                (widen)
+                (let* ((beg (progn
+                              (goto-char (point-min))
+                              (forward-line (1- (flycheck-error-line err)))
+                              (move-to-column (1- (flycheck-error-column err)))
+                              (point)))
+                       (to (cadr (read (format "(%s)" (flycheck-error-message err)))))
+                       (end (progn
+                              (goto-char (point-min))
+                              (forward-line (1- (car to)))
+                              (move-to-column (cdr to))
+                              (point))))
+                  (cons beg end)))))
+        (funcall fun err mode)))
+
+    (advice-add 'flycheck-parse-checkstyle :filter-return 'jdh--flycheck-eslint-to-info)
+
+    (advice-add 'flycheck-error-region-for-mode :around 'jdh--flycheck-flow-coverage-region)
+
     (flycheck-add-next-checker 'javascript-flow 'javascript-flow-coverage)
-    (add-hook 'js-mode-hook 'flycheck-mode))
+    (flycheck-add-next-checker 'javascript-flow-coverage 'javascript-eslint)
+    )
 
 ;;;;; Helm
   (with-eval-after-load 'helm
@@ -778,27 +706,31 @@ layers configuration."
     (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist))
 
 ;;;;; javascript
-  (with-eval-after-load 'js
-    (defun jdh--js-mode-setup ()
-      (spacemacs/toggle-auto-completion-on)
-      (outline-minor-mode 1)
-      (save-excursion
-        (goto-char 0)
-        (when (ignore-errors (re-search-forward "^// *@flow\\>"))
-          (setq company-backends '(company-yasnippet company-flow)))))
-
+  (with-eval-after-load 'js2-mode
     (defun jdh--js2-mode-setup ()
-      (js2-mode-hide-warnings-and-errors))
+      (eldoc-mode -1))
 
-    (evil-define-key 'insert js-mode-map
-      "\t" 'company-indent-or-complete-common)
+    (add-hook 'js2-mode-hook 'jdh--js2-mode-setup)
+    ;; (defun jdh--js-mode-setup ()
+    ;;   (spacemacs/toggle-auto-completion-on)
+    ;;   (outline-minor-mode 1)
+    ;;   (save-excursion
+    ;;     (goto-char 0)
+    ;;     (when (ignore-errors (re-search-forward "^// *@flow\\>"))
+    ;;       (setq company-backends '(company-yasnippet company-flow)))))
 
-    (evil-define-key 'insert js2-mode-map
-      "\t" 'company-indent-or-complete-common)
+    ;; (defun jdh--js2-mode-setup ()
+    ;;   (js2-mode-hide-warnings-and-errors))
 
-    (add-hook 'js-mode-hook 'jdh--js-mode-setup t)
-    (add-hook 'js2-mode-hook 'jdh--js-mode-setup t)
-    (add-hook 'js2-mode-hook 'jdh--js2-mode-setup t)
+    ;; (evil-define-key 'insert js-mode-map
+    ;;   "\t" 'company-indent-or-complete-common)
+
+    ;; (evil-define-key 'insert js2-mode-map
+    ;;   "\t" 'company-indent-or-complete-common)
+
+    ;; (add-hook 'js-mode-hook 'jdh--js-mode-setup t)
+    ;; (add-hook 'js2-mode-hook 'jdh--js-mode-setup t)
+    ;; (add-hook 'js2-mode-hook 'jdh--js2-mode-setup t)
 
 ;;;;;; overrides
     (defun jdh--js--proper-indentation (_ parse-status)
@@ -930,19 +862,22 @@ layers configuration."
     (set-face-attribute 'markdown-comment-face nil :strike-through nil))
 
 ;;;;; Misc
-  (with-eval-after-load 'compile
-    (add-to-list 'compilation-error-regexp-alist-alist
-                 '(flow "^\\([^:\n]+\\):\\([0-9]+\\)$" 1 2))
-    (setq compilation-error-regexp-alist '(flow))
-    ;; (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
-    ;;          compilation-error-regexp-alist)
-    )
+  ;; (with-eval-after-load 'compile
+  ;;   (add-to-list 'compilation-error-regexp-alist-alist
+  ;;                '(flow "^\\([^:\n]+\\):\\([0-9]+\\)$" 1 2))
+  ;;   (setq compilation-error-regexp-alist '(flow))
+  ;;   ;; (pushnew '("^at \\(.*?\\) line \\([0-9]+\\), column \\([0-9]+\\)" 1 2 3)
+  ;;   ;;          compilation-error-regexp-alist)
+  ;;   )
 
   (with-eval-after-load 'lisp-mode
     (add-hook 'emacs-lisp-mode-hook 'outline-minor-mode))
 
   (with-eval-after-load 'js
     (add-hook 'js-mode-hook 'outline-minor-mode))
+
+  (with-eval-after-load 'js2-mode
+    (add-hook 'js2-mode-hook 'outline-minor-mode))
 
   (with-eval-after-load 'shell
     (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
@@ -1109,38 +1044,3 @@ layers configuration."
     (spaceline-toggle-buffer-size-off)
     (spaceline-toggle-buffer-position-off))
   )
-
-;;; Custom
-;; Do not write anything past this comment. This is where Emacs will
-;; auto-generate custom variable definitions.
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(bmkp-last-as-first-bookmark-file "c:/Users/Jeremy.hughes/.emacs.d/.cache/bookmarks")
- '(column-number-mode t)
- '(custom-safe-themes
-   (quote
-    ("bffa9739ce0752a37d9b1eee78fc00ba159748f50dc328af4be661484848e476" default)))
- '(helm-source-names-using-follow (quote ("evil-markers" "mark-ring")))
- '(menu-bar-mode nil)
- '(package-selected-packages
-   (quote
-    (dizzee insert-shebang hide-comnt mocha sql-indent pcache org helm-gtags ggtags evil-unimpaired uuidgen tide typescript-mode thrift pug-mode org-projectile org-download livid-mode skewer-mode simple-httpd link-hint intero hlint-refactor helm-hoogle git-link eyebrowse evil-visual-mark-mode evil-ediff eshell-z dumb-jump company-shell company-ghci column-enforce-mode undo-tree flycheck-flow company-flow dired-rainbow dired-narrow dired-hacks-utils org-tree-slide ob-typescript git-gutter helm-chrome bookmark+ typo emojify oauth2 websocket ht password-store outshine outorg alert log4e gntp ob-http noflet nix-mode material-theme kv json-snatcher parent-mode helm-nixos-options request helm-aws haml-mode pkg-info epl flx evil-vimish-fold vimish-fold iedit highlight ensime sbt-mode scala-mode dash-functional pos-tip company-nixos-options nixos-options ghc bnfc dash slack circe anzu popup tern web-completion-data git-commit spinner package-build tss yaxception nodejs-repl psci deferred psc-ide powerline f hydra markdown-mode multiple-cursors js2-mode projectile smartparens packed avy company-quickhelp haskell-mode yasnippet company gitignore-mode helm helm-core json-reformat csharp-mode auto-complete flycheck magit magit-popup with-editor async s bind-key bind-map evil vi-tilde-fringe persp-mode evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode window-numbering which-key web-mode web-beautify volatile-highlights use-package toc-org tagedit stan-mode spacemacs-theme spaceline solarized-theme smooth-scrolling smeargle slim-mode shut-up shm shell-pop scss-mode scad-mode sass-mode restclient restart-emacs rainbow-delimiters quelpa qml-mode purescript-mode powershell popwin pcre2el pass paradox page-break-lines orgit org-repo-todo org-present org-pomodoro org-plus-contrib org-bullets open-junk-file omnisharp neotree multi-term move-text mmm-mode matlab-mode markdown-toc magit-gitflow macrostep lorem-ipsum linum-relative leuven-theme less-css-mode julia-mode json-mode js2-refactor js-doc jade-mode info+ indent-guide ido-vertical-mode hungry-delete htmlize hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-c-yasnippet helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger gh-md fsharp-mode flycheck-purescript flycheck-pos-tip flycheck-haskell flx-ido fish-mode fill-column-indicator fancy-battery expand-region exec-path-from-shell evil-visualstar evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-jumper evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-commentary evil-args evil-anzu eval-sexp-fu eshell-prompt-extras esh-help emmet-mode elisp-slime-nav define-word company-web company-tern company-statistics company-ghc company-cabal coffee-mode cmm-mode clean-aindent-mode buffer-move bracketed-paste auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
- '(paradox-github-token t)
- '(safe-local-variable-values
-   (quote
-    ((org-babel-default-header-args:typescript
-      (:cmdline . "--noImplicitAny --strictNullChecks --pretty")
-      (:wrap . "ANSI"))
-     (org-confirm-babel-evaluate))))
- '(tool-bar-mode nil))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(default ((t (:family "DejaVu Sans Mono" :foundry "unknown" :slant normal :weight normal :height 83 :width normal))))
- '(company-tooltip-common ((t (:inherit company-tooltip :weight bold :underline nil))))
- '(company-tooltip-common-selection ((t (:inherit company-tooltip-selection :weight bold :underline nil)))))
