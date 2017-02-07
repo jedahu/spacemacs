@@ -135,6 +135,7 @@ layers configuration."
 
 ;;;; Require
   (require 'generic-x)
+  (require 'cl)
 
 ;;;; Setq
 ;;;;; Global
@@ -428,9 +429,6 @@ layers configuration."
                '(js-runtime "\\(?:^[\t ]*at \\|(\\)\\(\\(?:[A-Za-z]:\\)?[^:()\n]+\\):\\([0-9]+\\):\\([0-9]+\\)\\(?:)\\|$\\)" 1 2 3))
   (add-to-list 'compilation-error-regexp-alist 'js-runtime)
 
-  (add-to-list 'outorg-language-name-assocs '(js-mode . js))
-  (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
-
 ;;;;; Hooks
   (add-hook 'focus-out-hook 'save-all)
   ;; (add-hook 'evil-normal-state-entry-hook 'save-buffer)
@@ -598,6 +596,7 @@ layers configuration."
     (defun jdh--flycheck-eslint-to-info (errs)
       (dolist (e errs)
         (when (eq 'javascript-eslint (flycheck-error-checker e))
+          (require 'cl)
           (setf (flycheck-error-level e) 'info)))
       errs)
 
@@ -947,6 +946,9 @@ layers configuration."
       (setq-local time-stamp-end ">\\|\\]")
       (setq-local time-stamp-format "%:y-%02m-%02d %03a")
       (org-indent-mode -1)
+      (org-add-link-type "doc"
+                         (lambda (path)
+                           (find-file path)))
       (org-babel-do-load-languages
        'org-babel-load-languages
        '((emacs-lisp . t)
@@ -1023,6 +1025,9 @@ layers configuration."
     (advice-add 'outorg-wrap-source-in-block :around 'orgen--outorg-wrap-source-in-block)
 
     (advice-add 'outorg-in-babel-load-languages-p :around 'orgen--outorg-in-babel-load-languages-p)
+
+    (add-to-list 'outorg-language-name-assocs '(js-mode . js))
+    (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
 
     (spacemacs/set-leader-keys-for-minor-mode 'outorg-edit-minor-mode
       "ooe" 'outorg-copy-edits-and-exit)
