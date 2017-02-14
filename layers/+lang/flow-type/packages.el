@@ -32,9 +32,9 @@
     "fc" 'flow-type/status
     "fC" 'flow-type/check
     "ft" 'flow-type/show-type-at-cursor)
-  (when flow-type/no-auto-start
+  (when flow-type-no-auto-start
     (add-to-list 'flycheck-javascript-flow-args "--no-auto-start"))
-  (when (eq 'process flow-type/no-auto-start)
+  (when (eq 'process flow-type-no-auto-start)
     (add-hook 'js2-mode-hook 'flow-type/ensure-server-buffer))
   (add-to-list 'compilation-error-regexp-alist-alist
                '(flow "^\\([^:\n]+\\):\\([0-9]+\\)$" 1 2))

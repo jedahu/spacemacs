@@ -1,13 +1,21 @@
-;; -*- mode: dotspacemacs -*-
-;;; Pre init
+;; -*- mode: emacs-lisp -*-
+;; This file is loaded by Spacemacs at startup.
+;; It must be stored in your home directory.
+;; * Pre init
 (setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
-;;; dotspacemacs/layers
-;;;; Layers
+;; * dotspacemacs/layers
+;; ** Layers
 (defun dotspacemacs/layers ()
-  "Configuration Layers declaration."
+  "Configuration Layers declaration.
+You should not put any user code in this function besides modifying the variable
+values."
   (setq-default
-   dotspacemacs-configuration-layer-path nil
+   dotspacemacs-distribution 'spacemacs
+   dotspacemacs-enable-lazy-installation 'unused
+   dotspacemacs-ask-for-lazy-installation t
+   dotspacemacs-configuration-layer-path '()
+
    dotspacemacs-configuration-layers
    (append
     '(
@@ -20,7 +28,8 @@
                   evil-snipe-repeat-scope 'whole-buffer)
       extra-langs
       (flow-type :variables
-                 flow-type/no-auto-start 'process)
+                 flow-type-no-auto-start 'process
+                 flow-type-enable-eldoc-type-info nil)
       fsharp
       git
       gnus
@@ -49,9 +58,9 @@
       windows-scripts
       )
     (when os-mswin? '()))
-   dotspacemacs-delete-orphan-packages t
+   dotspacemacs-install-packages 'used-only
 
-;;;; Exclusions
+;; ** Exclusions
    dotspacemacs-excluded-packages
    '(haskell-yas
      org-bullets
@@ -60,44 +69,88 @@
      toc-org)
    ))
 
-;;; dotspacemacs/init
-;;;; Init
+;; * dotspacemacs/init
+;; ** Init
 (defun dotspacemacs/init ()
   "Initialization function.
 This function is called at the very startup of Spacemacs initialization
-before layers configuration."
+before layers configuration.
+You should not put any user code in there besides modifying the variable
+values."
   (setq-default
-   dotspacemacs-editing-style 'vim
-   dotspacemacs-startup-banner nil
-   dotspacemacs-themes '(spacemacs-dark
-                         solarized-dark
-                         solarized-light
-                         material
-                         default)
+   dotspacemacs-active-transparency 90
+   dotspacemacs-auto-resume-layouts t
+   dotspacemacs-auto-save-file-location nil
+   dotspacemacs-check-for-update nil
+   dotspacemacs-colorize-cursor-according-to-state t
    dotspacemacs-default-font '("Source Code Pro"
                                :size 8.0
                                :weight normal
                                :width normal
                                :powerline-scale 1.0)
-   dotspacemacs-colorize-cursor-according-to-state t
-   dotspacemacs-leader-key "SPC"
+   dotspacemacs-default-layout-name "Default"
+   dotspacemacs-default-package-repository nil
+   dotspacemacs-default-package-repository nil
+   dotspacemacs-display-default-layout nil
+   dotspacemacs-distinguish-gui-tab nil
+   dotspacemacs-editing-style 'vim
+   dotspacemacs-elpa-https t
+   dotspacemacs-elpa-subdirectory nil
+   dotspacemacs-elpa-timeout 5
+   dotspacemacs-emacs-command-key "SPC"
    dotspacemacs-emacs-leader-key "C-SPC"
-   dotspacemacs-major-mode-leader-key ","
-   dotspacemacs-major-mode-emacs-leader-key "C-,"
-   dotspacemacs-command-key ":"
-   dotspacemacs-guide-key-delay 0.4
-   dotspacemacs-loading-progress-bar t
+   dotspacemacs-enable-paste-transient-state nil
+   dotspacemacs-ex-command-key ":"
+   dotspacemacs-ex-substitute-global nil
+   dotspacemacs-folding-method 'evil ;; 'origami
    dotspacemacs-fullscreen-at-startup nil
    dotspacemacs-fullscreen-use-non-native nil
-   dotspacemacs-maximized-at-startup nil
-   dotspacemacs-active-transparency 90
+   dotspacemacs-guide-key-delay 0.4
+   dotspacemacs-helm-no-header nil
+   dotspacemacs-helm-position 'bottom
+   dotspacemacs-helm-resize t
+   dotspacemacs-helm-use-fuzzy 'always
+   dotspacemacs-highlight-delimiters 'current
    dotspacemacs-inactive-transparency 90
+   dotspacemacs-large-file-size 1
+   dotspacemacs-leader-key "SPC"
+   dotspacemacs-line-numbers nil
+   dotspacemacs-loading-progress-bar t
+   dotspacemacs-major-mode-emacs-leader-key "C-,"
+   dotspacemacs-major-mode-leader-key ","
+   dotspacemacs-max-rollback-slots 5
+   dotspacemacs-maximized-at-startup nil
    dotspacemacs-mode-line-unicode-symbols t
-   dotspacemacs-smooth-scrolling t
    dotspacemacs-persistent-server nil
-   dotspacemacs-default-package-repository nil
+   dotspacemacs-remap-Y-to-y$ nil
+   dotspacemacs-retain-visual-state-on-shift t
+   dotspacemacs-scratch-mode 'emacs-lisp-mode
+   dotspacemacs-search-tools '("rg" "ag" "pt" "ack" "grep")
+   dotspacemacs-show-transient-state-color-guide t
+   dotspacemacs-show-transient-state-title t
+   dotspacemacs-smart-closing-parenthesis nil
+   dotspacemacs-smartparens-strict-mode nil
+   dotspacemacs-smooth-scrolling t
+   dotspacemacs-startup-banner nil
+   dotspacemacs-startup-buffer-responsive t
+   dotspacemacs-startup-lists '((todos . 5)
+                                (recents . 5)
+                                (projects . 7)
+                                (agenda . 5)
+                                (bookmarks . 8))
+   dotspacemacs-switch-to-buffer-prefers-purpose t
+   dotspacemacs-themes '(spacemacs-dark
+                         solarized-dark
+                         solarized-light
+                         material
+                         default)
+   dotspacemacs-verbose-loading nil
+   dotspacemacs-visual-line-move-text t
+   dotspacemacs-which-key-delay 0.4
+   dotspacemacs-which-key-position 'bottom
+   dotspacemacs-whitespace-cleanup nil
 
-;;;; Packages
+;; ** Packages
    dotspacemacs-additional-packages
    '(
      bnfc
@@ -121,24 +174,32 @@ before layers configuration."
   (setq
    ))
 
-;;; dotspacemacs/user-init
+;; * dotspacemacs/user-init
 (defun dotspacemacs/user-init ()
-  (setq outline-minor-mode-prefix "\M-*")
+  "Initialization function for user code.
+It is called immediately after `dotspacemacs/init', before layer configuration
+executes.
+ This function is mostly useful for variables that need to be set
+before packages are loaded. If you are unsure, you should try in setting them in
+`dotspacemacs/user-config' first."
   )
 
-;;; dotspacemacs/user-config
-;;;; Doc
+;; * dotspacemacs/user-config
+;; ** Doc
 (defun dotspacemacs/user-config ()
-  "Configuration function.
- This function is called at the very end of Spacemacs initialization after
-layers configuration."
+  "Configuration function for user code.
+This function is called at the very end of Spacemacs initialization after
+layers configuration.
+This is the place where most of your configurations should be done. Unless it is
+explicitly specified that a variable should be set before a package is loaded,
+you should place your code here."
 
-;;;; Require
+;; ** Require
   (require 'generic-x)
   (require 'cl)
 
-;;;; Setq
-;;;;; Global
+;; ** Setq
+;; *** Global
   (setq auto-save-default nil)
   (setq auto-save-interval 300)
   (setq auto-save-timeout 10)
@@ -250,6 +311,7 @@ layers configuration."
              (:results . "output verbatim")
              (:wrap . "ANSI")))
   (setq org-bullets-mode nil)
+  (setq org-descriptive-links t)
   (setq org-hide-block-overlays t)
   (setq org-hide-emphasis-markers t)
   (setq org-hide-inline-src-markers t)
@@ -292,19 +354,21 @@ layers configuration."
   (setq user-mail-address "jedahu@gmail.com")
   (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
 
-;;;;; Conditional
+;; *** Conditional
   (when os-mswin?
     (setq org-pomodoro-audio-player "sounder")
     (setq tramp-default-method "plink")
     )
 
-;;;; Global modes
+;; ** Global modes
   (evil-vimish-fold-mode 1)
   (yas-global-mode 1)
   (global-eldoc-mode -1)
   (spacemacs/toggle-fill-column-indicator-on)
+  (pupo-mode -1)
+  (global-flycheck-mode -1)
 
-;;;; File types
+;; ** File types
   (add-to-list 'auto-mode-alist '("\\.es\\.flow\\'" . js2-mode))
   (add-to-list 'auto-mode-alist '("\\.es\\'" . js2-mode))
   (add-to-list 'auto-mode-alist '("\\.js\\.flow\\'" . js2-mode))
@@ -312,7 +376,7 @@ layers configuration."
   (add-to-list 'auto-mode-alist '("/\\.babelrc\\'" . json-mode))
   (add-to-list 'auto-mode-alist '("/\\.flowconfig\\'" . ini-generic-mode))
 
-;;;; Functions
+;; ** Functions
   (defmacro ilambda (args &rest body)
     `(lambda ,args
        (interactive)
@@ -396,15 +460,15 @@ layers configuration."
     (outline-show-entry)
     (outline-show-children))
 
-;;;; Services
+;; ** Services
 
-;;;; Modes
+;; ** Modes
   (define-derived-mode ansi-mode fundamental-mode "ansi"
     "Fundamental mode that understands ANSI colors."
     (require 'ansi-color)
     (font-lock-add-keywords nil '((jdh--fontify-ansi-colors))))
 
-;;;; Lists
+;; ** Lists
   (add-to-list 'magic-mode-alist '("diff -r" . diff-mode))
 
   (add-to-list 'evil-fold-list
@@ -429,12 +493,12 @@ layers configuration."
                '(js-runtime "\\(?:^[\t ]*at \\|(\\)\\(\\(?:[A-Za-z]:\\)?[^:()\n]+\\):\\([0-9]+\\):\\([0-9]+\\)\\(?:)\\|$\\)" 1 2 3))
   (add-to-list 'compilation-error-regexp-alist 'js-runtime)
 
-;;;;; Hooks
+;; *** Hooks
   (add-hook 'focus-out-hook 'save-all)
   ;; (add-hook 'evil-normal-state-entry-hook 'save-buffer)
   (add-hook 'before-save-hook 'time-stamp)
 
-;;;; Bindings
+;; ** Bindings
   (define-key evil-evilified-state-map "G" 'evil-goto-line)
   (define-key evil-evilified-state-map "gg" 'evil-goto-first-line)
   (define-key evil-normal-state-map "zf" 'evil-vimish-fold/create)
@@ -462,13 +526,19 @@ layers configuration."
     (kbd "<backtab>") 'outshine-cycle-buffer)
 
   (evil-define-minor-mode-key 'normal 'outline-minor-mode
-    (kbd "<backtab>") 'outshine-cycle-buffer)
+    (kbd "<backtab>") 'outshine-cycle-buffer
+    "zj" 'outline-next-heading
+    "zk" 'outline-previous-heading)
+
+  (evil-define-key 'normal org-mode-map
+    "zj" 'org-next-visible-heading
+    "zk" 'org-previous-visible-heading)
 
   (spacemacs/set-leader-keys
     "p'" 'projectile-run-eshell)
 
-;;;; Modules
-;;;;; ssh
+;; ** Modules
+;; *** ssh
   (defun jdh-ssh-agent-start ()
     (with-current-buffer (get-buffer-create "*ensure-ssh*")
       (erase-buffer)
@@ -504,7 +574,7 @@ layers configuration."
 
   (jdh-ssh-agent-ensure)
 
-;;;;; C
+;; *** C
   (with-eval-after-load 'c-mode
     (defun c-mode-common-setup ()
       (setq tab-width 4)
@@ -513,7 +583,7 @@ layers configuration."
       (c-set-offset 'substatement-open 0))
     (add-hook 'c-mode-common-hook 'c-mode-common-setup))
 
-;;;;; ediff
+;; *** ediff
   (with-eval-after-load 'ediff
     (defun ediff-copy-both-to-C ()
       (interactive)
@@ -529,7 +599,7 @@ layers configuration."
 
     (add-hook 'ediff-keymap-setup-hook'add-d-to-ediff-mode-map))
 
-;;;;; EPA
+;; *** EPA
   (use-package epa-file
     :defer t
     :init (epa-file-enable)
@@ -537,7 +607,7 @@ layers configuration."
     (progn
       (setq epa-file-select-keys t)))
 
-;;;;; eshell
+;; *** eshell
   (with-eval-after-load 'eshell
     (setq helm-eshell-history-map nil)
 
@@ -591,12 +661,13 @@ layers configuration."
       "," 'spacemacs/eshell-scroll-micro-state
       "." 'spacemacs/eshell-scroll-micro-state))
 
-;;;;; flycheck
+;; *** flycheck
   (with-eval-after-load 'flycheck
+    (require 'cl)
+
     (defun jdh--flycheck-eslint-to-info (errs)
       (dolist (e errs)
         (when (eq 'javascript-eslint (flycheck-error-checker e))
-          (require 'cl)
           (setf (flycheck-error-level e) 'info)))
       errs)
 
@@ -606,7 +677,6 @@ layers configuration."
           (flycheck-error-with-buffer err
             (save-restriction
               (save-excursion
-                (message ":widen")
                 (widen)
                 (let* ((beg (progn
                               (goto-char (point-min))
@@ -630,7 +700,7 @@ layers configuration."
     (flycheck-add-next-checker 'javascript-flow-coverage 'javascript-eslint)
     )
 
-;;;;; Helm
+;; *** Helm
   (with-eval-after-load 'helm
     (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
     (define-key helm-map (kbd "<S-return>") 'helm-select-action)
@@ -692,7 +762,7 @@ layers configuration."
             ))
     )
 
-;;;;; ispell
+;; *** ispell
   (with-eval-after-load 'ispell
     (add-to-list 'ispell-dictionary-alist
                  '(("english"
@@ -707,12 +777,55 @@ layers configuration."
     (setq ispell-local-dictionary-alist ispell-dictionary-alist)
     (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist))
 
-;;;;; javascript
+;; *** javascript
   (with-eval-after-load 'js2-mode
+    (defun jdh--js-find-imports ()
+      (let ((case-fold-search t))
+        (search-backward-regexp
+         (format "^%s%s[[:space:]]*?$"
+                 (regexp-quote comment-start)
+                 (comment-padleft "[*]+ imports"))
+         nil)))
+
+    (defun jdh-js-insert-import (line)
+      (interactive "*Mimport ")
+      (save-excursion
+        (save-restriction
+          (jdh--js-find-imports)
+          (forward-line 1)
+          (let ((beg (point)))
+            (insert "import " line "\n")
+            (search-forward-regexp "^[[:space:]]*?$" nil 'noerror)
+            (forward-line -1)
+            (sort-lines nil beg (point-at-eol))))))
+
+    (defun jdh-js-sort-imports ()
+      (interactive)
+      (save-excursion
+        (save-restriction
+          (jdh--js-find-imports)
+          (forward-line 1)
+          (let ((beg (point)))
+            (search-forward-regexp "^[[:space:]]*?$" nil 'noerror)
+            (forward-line -1)
+            (sort-lines nil beg (point-at-eol))))))
+
     (defun jdh--js2-mode-setup ()
-      (eldoc-mode -1))
+      (setq mode-name "JS2")
+      (spacemacs/toggle-fill-column-indicator-on)
+      (setq-local comment-start "//")
+      (setq-local comment-empty-lines t)
+      (eldoc-mode -1)
+      (if jdh--outorg-in-edit-p
+            (setq org-descriptive-links nil)
+        (flycheck-mode 1))
+      )
 
     (add-hook 'js2-mode-hook 'jdh--js2-mode-setup)
+
+    (spacemacs/set-leader-keys-for-major-mode 'js2-mode
+      "ii" 'jdh-js-insert-import
+      "is" 'jdh-js-sort-imports)
     ;; (defun jdh--js-mode-setup ()
     ;;   (spacemacs/toggle-auto-completion-on)
     ;;   (outline-minor-mode 1)
@@ -734,7 +847,7 @@ layers configuration."
     ;; (add-hook 'js2-mode-hook 'jdh--js-mode-setup t)
     ;; (add-hook 'js2-mode-hook 'jdh--js2-mode-setup t)
 
-;;;;;; overrides
+;; **** overrides
     (defun jdh--js--proper-indentation (_ parse-status)
       "Return the proper indentation for the current line."
       (save-excursion
@@ -824,7 +937,7 @@ layers configuration."
     (advice-add 'js--looking-at-operator-p :around #'jdh--js--looking-at-operator-p)
     )
 
-;;;;; Markdown
+;; *** Markdown
   (with-eval-after-load 'markdown-mode
 
     (defun jdh--markdown-fontify-links (limit)
@@ -863,7 +976,7 @@ layers configuration."
     (add-hook 'markdown-mode-hook 'jdh--setup-markdown)
     (set-face-attribute 'markdown-comment-face nil :strike-through nil))
 
-;;;;; Misc
+;; *** Misc
   ;; (with-eval-after-load 'compile
   ;;   (add-to-list 'compilation-error-regexp-alist-alist
   ;;                '(flow "^\\([^:\n]+\\):\\([0-9]+\\)$" 1 2))
@@ -893,11 +1006,11 @@ layers configuration."
     (diminish 'outline-minor-mode)
     (add-hook 'outline-minor-mode-hook 'outshine-hook-function))
 
-;;;;; nix-mode
+;; *** nix-mode
   (with-eval-after-load 'nix-mode
     (add-hook 'nix-mode-hook 'hs-minor-mode))
 
-;;;;; Org
+;; *** Org
   (with-eval-after-load 'org
     (require 'org-agenda)
 
@@ -968,7 +1081,13 @@ layers configuration."
                               '((jdh--org-fontify-inline-src)
                                 (jdh--org-fontify-ansi-block)
                                 (jdh--org-fontify-ansi-src))
-                              t))
+                              t)
+      (when jdh--outorg-in-edit-p
+        (setq fill-column 77)
+        (setq org-hide-macro-markers nil)
+        (setq org-hide-emphasis-markers nil)
+        (jdh-fontify-region-or-buffer))
+      )
 
     (defun jdh-org-toggle-macro-markup ()
       (interactive)
@@ -1015,12 +1134,47 @@ layers configuration."
     (add-hook 'after-save-hook 'jdh--org-maybe-export)
     )
 
-;;;;;; Outorg
+;; **** org-projectile
+  (with-eval-after-load 'org-projectile
+    (defun jdh--projectile-relative-file-name (file)
+      (concat "./" (file-relative-name file (projectile-project-root))))
+
+    (setq org-projectile:subheading-selection t)
+
+    (setq org-projectile:project-name-to-location
+          (lambda (pname)
+            (if org-projectile:subheading-selection
+                (progn (message "prompting")
+                       (goto-char (point-min))
+                       (org-projectile:prompt-for-subheadings 'tree)
+                       t)
+              (goto-char (point-max))
+              nil)))
+
+    (setq org-capture-templates
+          (list (org-projectile:project-todo-entry
+                 "p"
+                 "* TODO [[%(jdh--projectile-relative-file-name \"%F\")::%i][%^{name}]]\n%?" "Linked Project TODO"))))
+
+;; **** Outorg
   (with-eval-after-load 'outorg
     (defun orgen--outorg-wrap-source-in-block (fun lang &optional _)
       (funcall fun lang))
 
     (defun orgen--outorg-in-babel-load-languages-p (fun _) t)
+
+    (defun jdh--outorg-copy-edits-and-exit ()
+      (interactive)
+      (outorg-copy-edits-and-exit)
+      (save-excursion
+        (goto-char (point-min))
+        (while (search-forward-regexp (format "^%s[[:space:]]*?\n%s [*]+ "
+                                              comment-start
+                                              comment-start)
+                                      nil
+                                      'noerror)
+          (forward-line -1)
+          (delete-region (point) (point-at-eol)))))
 
     (advice-add 'outorg-wrap-source-in-block :around 'orgen--outorg-wrap-source-in-block)
 
@@ -1030,28 +1184,41 @@ layers configuration."
     (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
 
     (spacemacs/set-leader-keys-for-minor-mode 'outorg-edit-minor-mode
-      "ooe" 'outorg-copy-edits-and-exit)
+      "ooe" 'jdh--outorg-copy-edits-and-exit)
     )
 
-;;;;;; Org babel
+;; **** Org babel
   (with-eval-after-load 'ob
     (load-file "~/.emacs.d/ob-typescript.el")
     (require 'ob-typescript)
     (load-file "~/.emacs.d/ob-flowtype.el")
     (require 'ob-flowtype))
 
-;;;;;; Org tree slide
+;; **** Org tree slide
   (with-eval-after-load 'org-tree-slide
     (spacemacs/set-leader-keys-for-minor-mode 'org-tree-slide-mode
       "Z" 'org-tree-slide-content))
 
-;;;;; outshine
+;; *** outshine
   (with-eval-after-load 'outshine
+    (defvar jdh--outorg-in-edit-p nil)
+
+    (defun jdh--outorg-edit-as-org ()
+      (interactive)
+      (let ((jdh--outorg-in-edit-p t))
+        (outorg-edit-as-org)))
+
+    (defun jdh--outorg-edit-all-as-org ()
+      (interactive)
+      (let ((jdh--outorg-in-edit-p t))
+        (outorg-edit-as-org '(4))))
+
     (spacemacs/set-leader-keys-for-minor-mode 'outline-minor-mode
-      "ooe" 'outorg-edit-as-org)
+      "ooe" 'jdh--outorg-edit-as-org
+      "ooE" 'jdh--outorg-edit-all-as-org)
     )
 
-;;;;; persp
+;; *** persp
   (with-eval-after-load 'persp-mode
     (defun jdh-persp-remove-killed-buffers ()
       (interactive)
@@ -1061,9 +1228,43 @@ layers configuration."
                         (delete-if-not #'buffer-live-p (persp-buffers p)))))
             (persp-persps))))
 
-;;;;; spaceline
+;; *** spaceline
   (with-eval-after-load 'spaceline-segments
     (spaceline-toggle-buffer-encoding-abbrev-off)
     (spaceline-toggle-buffer-size-off)
     (spaceline-toggle-buffer-position-off))
+
+;; ** Hacks
+  (spacemacs/set-leader-keys
+    dotspacemacs-emacs-command-key 'helm-M-x)
   )
+
+;; * Custom
+(defun dotspacemacs/emacs-custom-settings ()
+  "Emacs custom settings.
+This is an auto-generated function, do not modify its content directly, use
+Emacs customize menu instead.
+This function is called at the very end of Spacemacs initialization."
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
+ '(safe-local-variable-values
+   (quote
+    ((projectile-project-test-cmd . "yarn run build-then-test")
+     (projectile-project-compilation-cmd . "yarn run build")
+     (projectile-project-name . "MJS")
+     (org-babel-default-header-args:typescript
+      (:cmdline . "--noImplicitAny --strictNullChecks --pretty")
+      (:wrap . "ANSI"))
+     (org-confirm-babel-evaluate)
+     (projectile-project-name . MJS)))))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+)

@@ -1,4 +1,4 @@
-(defvar flow-type/no-auto-start nil
+(defvar flow-type-no-auto-start nil
   "Set flow server auto-start behaviour.
 
 Possible values:

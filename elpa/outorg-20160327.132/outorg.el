@@ -1194,9 +1194,12 @@ If `outorg-edit-whole-buffer' is non-nil, copy the whole buffer, otherwise
       ;; reset var to original state after conversion
       (setq outorg-oldschool-elisp-headers-p t))
     ;; call conversion function
+    (message "BEFORE")
     (outorg-convert-to-org)
     ;; change major mode to org-mode
+    (message "AFTER")
     (org-mode)
+    (message "AFTERER")
     ;; activate minor mode outorg-edit-minor-mode
     (outorg-edit-minor-mode)
     ;; set outline visibility
@@ -1362,8 +1365,8 @@ space."
 	    ;; uncomment region between A and B
 	    (when (< outorg-pt-A-marker
 		     outorg-pt-B-marker)
-	      (uncomment-region
-	       outorg-pt-A-marker outorg-pt-B-marker)
+	      (ignore-errors (uncomment-region
+	       outorg-pt-A-marker outorg-pt-B-marker))
 	      ;; move point to end of src
 	      (and pt-B-pos pt-C-pos
 		   (cond
@@ -1442,10 +1445,10 @@ Assume that edit-buffer major-mode has been set back to the
 		      (regexp-quote
 		       (outorg-get-babel-name
 			buffer-mode 'AS-STRG-P))
-		      "[^\000]*?\n#\\+end_src\\)") ; NUL char
+		      "[[:space:]]*?\n[^\000]*?\n#\\+end_src\\)") ; NUL char
 	    (concat 
 	     "\\(?:#\\+begin_example"
-	     "[^\000]*?\n#\\+end_example\\)")))
+	     "[[:space:]]*?\n[^\000]*?\n#\\+end_example\\)")))
 	 (first-block-p t))
     ;; 1st run: outcomment text, delete (active) block delimiters
     ;; reset (left-over) marker
