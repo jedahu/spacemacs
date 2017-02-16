@@ -11452,9 +11452,15 @@ If the file does not exist, an error is thrown."
 	 (remp (and (assq 'remote apps) (org-file-remote-p file)))
 	 (dirp (unless remp (file-directory-p file)))
 	 (file (if (and dirp org-open-directory-means-index-dot-org)
-		   (concat (file-name-as-directory file) "index.org")
-		 file))
-	 (a-m-a-p (assq 'auto-mode apps))
+                   (let ((index.org (concat (file-name-as-directory file) "index.org")))
+                     (if (file-exists-p index.org)
+                         index.org
+                       (first (directory-files
+                               (file-name-as-directory file)
+                               t
+                               "^index\\."))))
+                 file))
+         (a-m-a-p (assq 'auto-mode apps))
 	 (dfile (downcase file))
 	 ;; Reconstruct the original link from the PATH, LINE and
 	 ;; SEARCH args.

@@ -196,7 +196,7 @@ you should place your code here."
 
 ;; ** Require
   (require 'generic-x)
-  (require 'cl)
+  (require 'cl-lib)
 
 ;; ** Setq
 ;; *** Global
@@ -334,6 +334,7 @@ you should place your code here."
           (home . :html-link-home)))
   (setq org-log-done 'time)
   (setq org-log-into-drawer t)
+  (setq org-open-directory-means-index-dot-org nil)
   (setq org-pomodoro-format ":%s")
   (setq org-pomodoro-time-format "%.2m")
   (setq org-publish-use-timestamps-flag nil)
@@ -538,6 +539,14 @@ you should place your code here."
     "p'" 'projectile-run-eshell)
 
 ;; ** Modules
+
+;; *** Elisp
+
+  (defun jdh--emacs-lisp-mode-setup ()
+    (setq-local tab-width 8))
+
+  (add-hook 'emacs-lisp-mode-hook 'jdh--emacs-lisp-mode-setup)
+
 ;; *** ssh
   (defun jdh-ssh-agent-start ()
     (with-current-buffer (get-buffer-create "*ensure-ssh*")
@@ -663,8 +672,6 @@ you should place your code here."
 
 ;; *** flycheck
   (with-eval-after-load 'flycheck
-    (require 'cl)
-
     (defun jdh--flycheck-eslint-to-info (errs)
       (dolist (e errs)
         (when (eq 'javascript-eslint (flycheck-error-checker e))
@@ -1154,7 +1161,9 @@ you should place your code here."
     (setq org-capture-templates
           (list (org-projectile:project-todo-entry
                  "p"
-                 "* TODO [[%(jdh--projectile-relative-file-name \"%F\")::%i][%^{name}]]\n%?" "Linked Project TODO"))))
+                 "* TODO %f %i
+[[doc:%(jdh--projectile-relative-file-name \"%F\")::%i][source]]%?"
+ "Linked Project TODO"))))
 
 ;; **** Outorg
   (with-eval-after-load 'outorg
