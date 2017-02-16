@@ -139,11 +139,12 @@ values."
                                 (agenda . 5)
                                 (bookmarks . 8))
    dotspacemacs-switch-to-buffer-prefers-purpose t
-   dotspacemacs-themes '(spacemacs-dark
+   dotspacemacs-themes '(default
+                         spacemacs-dark
                          solarized-dark
                          solarized-light
                          material
-                         default)
+                         )
    dotspacemacs-verbose-loading nil
    dotspacemacs-visual-line-move-text t
    dotspacemacs-which-key-delay 0.4
@@ -1014,6 +1015,34 @@ you should place your code here."
   (with-eval-after-load 'org
     (require 'org-agenda)
 
+    (defun jdh-org-insert-olp (path &optional sort fn top)
+      (let ((start (point)))
+        (if top
+            (org-insert-heading)
+          (org-insert-subheading '(4)))
+        (insert (car path))
+        (dolist (p (cdr path))
+          (org-insert-subheading '(4))
+          (insert p))
+        (if fn (funcall fn) (newline))
+        (when sort
+          (goto-char start)
+          (apply #'org-sort-entries sort))))
+
+    (defun jdh-org-ensure-olp (path &optional overflow sort fn)
+      (if-let (m (ignore-errors (org-find-olp path 'this-buffer)))
+          (progn
+            (goto-char (marker-position m))
+            (if overflow
+                (jdh-org-insert-olp overflow sort fn)
+              (when fn (funcall fn))))
+        (if path
+            (jdh-org-ensure-olp
+             (butlast path) (cons (car (last path)) overflow) sort fn)
+          (if overflow
+              (jdh-org-insert-olp overflow sort fn 'top)
+            (when fn (funcall fn))))))
+
     (defun jdh--org-fontify-inline-src (limit)
       "Fontify inline src."
       (when (re-search-forward "\\(\\<src_[a-z]+?{\\)[^{]+?\\(}\\)" limit t)
@@ -1139,6 +1168,20 @@ you should place your code here."
     (defun jdh--projectile-relative-file-name (file)
       (concat "./" (file-relative-name file (projectile-project-root))))
 
+    (defun jdh--todo-relative-path (path)
+      (f-relative path (locate-dominating-file path "TODO.org")))
+
+    (defun jdh--find-todo-location ()
+      (let* ((dir (locate-dominating-file buffer-file-name "TODO.org"))
+             (todo (f-join dir "TODO.org"))
+             (text (buffer-substring-no-properties (point) (mark)))
+             (path (split-string
+                    (f-relative buffer-file-name dir)
+                    "/")))
+        (find-file todo)
+        (jdh-org-ensure-olp path)
+        ))
+
     (setq org-projectile:subheading-selection t)
 
     (setq org-projectile:project-name-to-location
@@ -1152,9 +1195,11 @@ you should place your code here."
               nil)))
 
     (setq org-capture-templates
-          (list (org-projectile:project-todo-entry
-                 "p"
-                 "* TODO [[%(jdh--projectile-relative-file-name \"%F\")::%i][%^{name}]]\n%?" "Linked Project TODO"))))
+          (list
+           '("p" "Project TODO" entry
+                 (function jdh--find-todo-location)
+                 "* TODO %^{name|%i}\n[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]%?"
+                 ))))
 
 ;; **** Outorg
   (with-eval-after-load 'outorg
