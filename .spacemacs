@@ -323,7 +323,7 @@ you should place your code here."
   (setq org-html-use-infojs t)
   (setq org-html-infojs-options
         '((path . "org-info.js")
-          (view . "overview")
+          (view . "showall")
           (toc . "nil")
           (ftoc . "0")
           (tdepth . "max")
@@ -341,6 +341,7 @@ you should place your code here."
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
   (setq org-tags-column -80)
+  (setq persp-kill-foreign-buffer-behaviour 'kill)
   (setq powerline-default-separator 'utf-8)
   (setq powerline-utf-8-separator-left 124)
   (setq powerline-utf-8-separator-right 124)
@@ -462,6 +463,12 @@ you should place your code here."
     (outline-show-entry)
     (outline-show-children))
 
+  (defun jdh-goto-dominating-todo ()
+    (interactive)
+    (if-let (dir (locate-dominating-file default-directory "TODO.org"))
+        (find-file (f-join dir "TODO.org"))
+      (message "No TODO.org found.")))
+
 ;; ** Services
 
 ;; ** Modes
@@ -537,7 +544,8 @@ you should place your code here."
     "zk" 'org-previous-visible-heading)
 
   (spacemacs/set-leader-keys
-    "p'" 'projectile-run-eshell)
+    "p'" 'projectile-run-eshell
+    "po" 'jdh-goto-dominating-todo)
 
 ;; ** Modules
 
@@ -1022,10 +1030,25 @@ you should place your code here."
   (with-eval-after-load 'org
     (require 'org-agenda)
 
+    (defun jdh-org-update-effort-clock-difference ()
+      (interactive)
+      (save-excursion
+        (org-back-to-heading t)
+        (let ((estimate (org-entry-get (point) "Effort"))
+              (time (org-clock-sum-current-item)))
+          (when (and estimate time)
+            (org-entry-put
+             (point)
+             "EffortDiff"
+             (org-minutes-to-clocksum-string
+              (- (org-duration-string-to-minutes estimate)
+                 time)))))))
+
     (defun jdh-org-insert-olp (path &optional sort fn top)
       (let ((start (point)))
         (if top
-            (org-insert-heading)
+            (progn (goto-char (point-max))
+                   (org-insert-heading nil nil 'top))
           (org-insert-subheading '(4)))
         (insert (car path))
         (dolist (p (cdr path))
@@ -1037,7 +1060,7 @@ you should place your code here."
           (apply #'org-sort-entries sort))))
 
     (defun jdh-org-ensure-olp (path &optional overflow sort fn)
-      (if-let (m (ignore-errors (org-find-olp path 'this-buffer)))
+      (if-let (m (and path (ignore-errors (org-find-olp path 'this-buffer))))
           (progn
             (goto-char (marker-position m))
             (if overflow
@@ -1168,6 +1191,83 @@ you should place your code here."
     (add-hook 'org-mode-hook 'jdh--org-mode-setup)
     (add-hook 'before-save-hook 'jdh--org-update-blocks)
     (add-hook 'after-save-hook 'jdh--org-maybe-export)
+    (add-hook 'org-clock-out-hook 'jdh-org-update-effort-clock-difference)
+    )
+
+;; **** org vsts
+  (with-eval-after-load 'org
+    (require 'request)
+
+    (defvar jdh-vsts-url nil)
+    (defvar jdh-vsts-auth nil)
+
+    (defun jdh-vsts-get-workitem (id fn)
+      (interactive)
+      (lexical-let ((f fn))
+        (request
+         (format "%s/_apis/wit/workitems" jdh-vsts-url)
+         :type "GET"
+         :params `(("api-version" . "1.0")
+                   ("ids" . ,id))
+         :headers `(("Authorization" . ,(format "Basic %s" jdh-vsts-auth)))
+         :parser 'json-read
+         :error (cl-function
+                 (lambda (&rest args)
+                   (insert "Error fetching work item")))
+         :success (cl-function
+                   (lambda (&key data &allow-other-keys)
+                     (funcall f data))))))
+
+    (defun jdh-org-vsts-update-workitem ()
+      (save-excursion
+        (org-back-to-heading)
+        (lexical-let ((buf (current-buffer)))
+          (when-let (wid (org-entry-get (point) "VSTS_WORKITEM_ID"))
+            (message (format "Fetching WID %s" wid))
+            (jdh-vsts-get-workitem
+             wid
+             #'(lambda (data)
+                 (with-current-buffer buf
+                   (let* ((elem (org-element-at-point))
+                          (end (plist-get (second elem) :end))
+                          (fields
+                           (assoc-default
+                            'fields
+                            (aref (assoc-default 'value data) 0)))
+                          (descr (assoc-default 'System.Description fields))
+                          (crit (assoc-default 'Microsoft.VSTS.Common.AcceptanceCriteria fields)))
+
+                     (when (search-forward-regexp
+                            "^:DESCRIPTION:[ \t]*\n\\(?:[^\n]*\n\\)*?:END:[ \t]*?$"
+                            end 'noerror)
+                       (replace-match ""))
+                     (shr-ensure-newline)
+                     (insert ":DESCRIPTION:\n")
+                     (let ((descr-start (point)))
+                       (insert (format "%s" descr))
+                       (shr-render-region descr-start (point)))
+                     (if (looking-at "^[[:space:]]*$")
+                       (delete-region (point) (point-at-eol))
+                       (insert "\n"))
+                     (insert ":END:")
+
+                     (org-back-to-heading)
+                     (let ((elem (org-element-at-point))
+                           (end (plist-get (second elem) :end)))
+                       (when (search-forward-regexp
+                              "^:ACCEPTANCE_CRITERIA:[ \t]*\n\\(?:[^\n]*\n\\)*?:END:[ \t]*?$"
+                              end 'noerror)
+                         (replace-match ""))
+
+                       (shr-ensure-newline)
+                       (insert ":ACCEPTANCE_CRITERIA:\n")
+                       (let ((crit-start (point)))
+                         (insert (format "%s" crit))
+                         (shr-render-region crit-start (point)))
+                       (shr-ensure-newline)
+                       (insert ":END:"))
+
+                     ))))))))
     )
 
 ;; **** org-projectile
@@ -1187,33 +1287,23 @@ you should place your code here."
                     "/")))
         (find-file todo)
         (jdh-org-ensure-olp path)
+        (forward-line -1)
         ))
-
-    (setq org-projectile:subheading-selection t)
-
-    (setq org-projectile:project-name-to-location
-          (lambda (pname)
-            (if org-projectile:subheading-selection
-                (progn (message "prompting")
-                       (goto-char (point-min))
-                       (org-projectile:prompt-for-subheadings 'tree)
-                       t)
-              (goto-char (point-max))
-              nil)))
 
     (setq org-capture-templates
           (list
            '("p" "Project TODO" entry
                  (function jdh--find-todo-location)
-                 "* TODO %^{name|%i}\n[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]%?"
+                 "* TODO %^{name|%i}
+[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]"
                  ))))
 
 ;; **** Outorg
   (with-eval-after-load 'outorg
-    (defun orgen--outorg-wrap-source-in-block (fun lang &optional _)
+    (defun jdh--outorg-wrap-source-in-block (fun lang &optional _)
       (funcall fun lang))
 
-    (defun orgen--outorg-in-babel-load-languages-p (fun _) t)
+    (defun jdh--outorg-in-babel-load-languages-p (fun _) t)
 
     (defun jdh--outorg-copy-edits-and-exit ()
       (interactive)
@@ -1228,9 +1318,9 @@ you should place your code here."
           (forward-line -1)
           (delete-region (point) (point-at-eol)))))
 
-    (advice-add 'outorg-wrap-source-in-block :around 'orgen--outorg-wrap-source-in-block)
+    (advice-add 'outorg-wrap-source-in-block :around 'jdh--outorg-wrap-source-in-block)
 
-    (advice-add 'outorg-in-babel-load-languages-p :around 'orgen--outorg-in-babel-load-languages-p)
+    (advice-add 'outorg-in-babel-load-languages-p :around 'jdh--outorg-in-babel-load-languages-p)
 
     (add-to-list 'outorg-language-name-assocs '(js-mode . js))
     (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
