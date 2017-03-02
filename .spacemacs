@@ -4,6 +4,9 @@
 ;; * Pre init
 (setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
+(eval-when-compile
+  (require 'cl-lib))
+
 ;; * dotspacemacs/layers
 ;; ** Layers
 (defun dotspacemacs/layers ()
@@ -139,11 +142,11 @@ values."
                                 (agenda . 5)
                                 (bookmarks . 8))
    dotspacemacs-switch-to-buffer-prefers-purpose t
-   dotspacemacs-themes '(default
-                         spacemacs-dark
+   dotspacemacs-themes '(spacemacs-dark
                          solarized-dark
                          solarized-light
                          material
+                         default
                          )
    dotspacemacs-verbose-loading nil
    dotspacemacs-visual-line-move-text t
@@ -159,6 +162,7 @@ values."
      dired-narrow
      dizzee
      evil-vimish-fold
+     fit-frame
      git-gutter
      helm-aws
      helm-chrome
@@ -168,6 +172,7 @@ values."
      nodejs-repl
      ob-http
      org-tree-slide
+     orgtbl-ascii-plot
      outshine
      purescript-mode
      yaml-mode
@@ -312,6 +317,9 @@ you should place your code here."
              (:results . "output verbatim")
              (:wrap . "ANSI")))
   (setq org-bullets-mode nil)
+  ;; (setq org-confirm-babel-evaluate '(lambda (lang _body)
+  ;;                                     (not (member lang '("gnuplot" "ditaa")))))
+  (setq org-confirm-babel-evaluate nil)
   (setq org-descriptive-links t)
   (setq org-hide-block-overlays t)
   (setq org-hide-emphasis-markers t)
@@ -348,6 +356,7 @@ you should place your code here."
   (setq projectile-indexing-method 'alien)
   (setq projectile-enable-caching t)
   (setq projectile-switch-project-action 'projectile-run-eshell)
+  (setq purpose-user-mode-purposes '((web-mode . edit)))
   (setq shell-default-shell 'shell)
   (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
@@ -1029,20 +1038,25 @@ you should place your code here."
 ;; *** Org
   (with-eval-after-load 'org
     (require 'org-agenda)
+    (require 'org-collector)
 
-    (defun jdh-org-update-effort-clock-difference ()
+    (defun jdh-org-update-velocity ()
       (interactive)
       (save-excursion
         (org-back-to-heading t)
         (let ((estimate (org-entry-get (point) "Effort"))
               (time (org-clock-sum-current-item)))
-          (when (and estimate time)
+          (when (and estimate time (< 0 time))
             (org-entry-put
              (point)
-             "EffortDiff"
-             (org-minutes-to-clocksum-string
-              (- (org-duration-string-to-minutes estimate)
-                 time)))))))
+             "Velocity"
+             (format "%s"
+                     (/
+                      (round
+                       (* 10.0
+                          (/ (* 60.0 estimate)
+                             (float time))))
+                      10.0)))))))
 
     (defun jdh-org-insert-olp (path &optional sort fn top)
       (let ((start (point)))
@@ -1125,6 +1139,7 @@ you should place your code here."
        'org-babel-load-languages
        '((emacs-lisp . t)
          (sh . t)
+         (gnuplot . t)
          ))
       (dolist (face '(org-document-title
                       org-level-1
@@ -1191,7 +1206,7 @@ you should place your code here."
     (add-hook 'org-mode-hook 'jdh--org-mode-setup)
     (add-hook 'before-save-hook 'jdh--org-update-blocks)
     (add-hook 'after-save-hook 'jdh--org-maybe-export)
-    (add-hook 'org-clock-out-hook 'jdh-org-update-effort-clock-difference)
+    (add-hook 'org-clock-out-hook 'jdh-org-update-velocity)
     )
 
 ;; **** org vsts
@@ -1370,6 +1385,10 @@ you should place your code here."
                         (delete-if-not #'buffer-live-p (persp-buffers p)))))
             (persp-persps))))
 
+;; *** purpose
+  (with-eval-after-load 'window-purpose
+    (purpose-compile-user-configuration))
+
 ;; *** spaceline
   (with-eval-after-load 'spaceline-segments
     (spaceline-toggle-buffer-encoding-abbrev-off)
@@ -1392,7 +1411,13 @@ This function is called at the very end of Spacemacs initialization."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(evil-want-Y-yank-to-eol nil)
  '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
+ '(package-selected-packages
+   (quote
+    (gnuplot-mode orgtbl-ascii-plot fit-frame omnisharp yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox outshine orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+ '(psc-ide-add-import-on-completion t t)
+ '(psc-ide-rebuild-on-save nil t)
  '(safe-local-variable-values
    (quote
     ((projectile-project-test-cmd . "yarn run build-then-test")
