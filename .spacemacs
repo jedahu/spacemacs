@@ -158,10 +158,12 @@ values."
    dotspacemacs-additional-packages
    '(
      bnfc
+     calfw
      csharp-mode
      dired-narrow
      dizzee
      evil-vimish-fold
+     excorporate
      fit-frame
      git-gutter
      helm-aws
@@ -171,6 +173,7 @@ values."
      mocha
      nodejs-repl
      ob-http
+     org-gcal
      org-tree-slide
      orgtbl-ascii-plot
      outshine
@@ -262,6 +265,7 @@ you should place your code here."
            :open #[nil "\300p`\"\207" [origami-open-node] 3]
            :open-rec #[nil "\300p`\"\207" [origami-open-node-recursively] 3]
            :close #[nil "\300p`\"\207" [origami-close-node] 3])))
+  (setq excorporate-configuration '("jeremy.hughes@arlo.co" . "https://outlook.office365.com/ews/services.wsdl"))
   (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
   (setq flow-executable "flow")
   (setq flow-common-args '("--quiet" "--no-auto-start" "--show-all-errors"))
@@ -299,6 +303,9 @@ you should place your code here."
           ("&&" . ?∧)
           ("||" . ?∨)
           ("void" . ?⊥)))
+  (setq js-doc-parameter-line " * @arg {} %p\n")
+  (setq js-doc-return-line " * @returns {}\n")
+  (setq js-doc-throw-regexp "throw\\|raise")
   (setq markdown-hr-strings (list
                              (make-string 80 ?-)
                              (string-trim-right
@@ -311,6 +318,7 @@ you should place your code here."
   (setq nnml-directory "~/.gmail")
   (setq omnisharp-server-executable-path nil)
   (setq org-agenda-files "~/AGENDA")
+  (setq org-agenda-include-diary t)
   (setq org-babel-default-header-args:sh
         '((:prologue . "exec 2>&1")
              (:epilogue . ":")
@@ -321,6 +329,9 @@ you should place your code here."
   ;;                                     (not (member lang '("gnuplot" "ditaa")))))
   (setq org-confirm-babel-evaluate nil)
   (setq org-descriptive-links t)
+  (setq org-gcal-client-id "1094137197380-a6epgtjno65j4dc4t5841u9q12t0q5qt.apps.googleusercontent.com")
+  (setq org-gcal-client-secret "h4p__gunYsHwgb7sJj21ZxKy")
+  (setq org-gcal-file-alist '(("jeremy.hughes@learningsourcehq.com" . "~/CALENDAR.org")))
   (setq org-hide-block-overlays t)
   (setq org-hide-emphasis-markers t)
   (setq org-hide-inline-src-markers t)
@@ -478,6 +489,45 @@ you should place your code here."
         (find-file (f-join dir "TODO.org"))
       (message "No TODO.org found.")))
 
+  (defun jdh-copy-visible (keepp)
+    "Create a copy of the visible part of the current buffer and add
+it to the kill ring so it can be copied into other buffers or programs.
+The copy is created in a temporary buffer and removed after use.
+As a special case, if you have a prefix arg KEEPP, the temporary
+buffer will not be removed but presented to you so that you can
+continue to use it.
+This function is derived from org-export-visible."
+    (interactive "P")
+    (let* ((file buffer-file-name)
+           (buffer (get-buffer-create "*Copy Visible*"))
+           s e)
+      (with-current-buffer buffer (erase-buffer))
+      (save-excursion
+        (setq s (goto-char (point-min)))
+        (while (not (= (point) (point-max)))
+          (goto-char (jdh-find-invisible))
+          (append-to-buffer buffer s (point))
+          (setq s (goto-char (jdh-find-visible))))
+        (goto-char (point-min))
+        (set-buffer buffer)
+        (kill-new (buffer-substring (point-min) (point-max)))
+        (if (not keepp)
+            (kill-buffer buffer)
+          (switch-to-buffer-other-window buffer)
+          (goto-char (point-min))))))
+
+  (defun jdh-find-visible ()
+    (let ((s (point)))
+      (while (and (not (= (point-max) (setq s (next-overlay-change s))))
+                  (get-char-property s 'invisible)))
+      s))
+
+  (defun jdh-find-invisible ()
+    (let ((s (point)))
+      (while (and (not (= (point-max) (setq s (next-overlay-change s))))
+                  (not (get-char-property s 'invisible))))
+      s))
+
 ;; ** Services
 
 ;; ** Modes
@@ -530,6 +580,8 @@ you should place your code here."
   (evil-leader/set-key "br" 'rename-buffer)
   (evil-leader/set-key "bU" 'bury-buffer)
   (evil-leader/set-key "e," 'flycheck-display-error-at-point)
+
+  (evil-leader/set-key "xts" 'transpose-sexps)
 
   (evil-define-key 'normal sh-mode-map
     (kbd "<backtab>") 'outshine-cycle-buffer)
@@ -717,7 +769,7 @@ you should place your code here."
                   (cons beg end)))))
         (funcall fun err mode)))
 
-    (advice-add 'flycheck-parse-checkstyle :filter-return 'jdh--flycheck-eslint-to-info)
+    ;; (advice-add 'flycheck-parse-checkstyle :filter-return 'jdh--flycheck-eslint-to-info)
 
     (advice-add 'flycheck-error-region-for-mode :around 'jdh--flycheck-flow-coverage-region)
 
@@ -841,6 +893,7 @@ you should place your code here."
       (setq-local comment-start "//")
       (setq-local comment-empty-lines t)
       (eldoc-mode -1)
+      (company-mode -1)
       (if jdh--outorg-in-edit-p
             (setq org-descriptive-links nil)
         (flycheck-mode 1))
@@ -1040,13 +1093,45 @@ you should place your code here."
     (require 'org-agenda)
     (require 'org-collector)
 
+    (dolist (x '(((prefix . "tfs") (envvar . "TFS_WORKITEM_URL"))
+                 ((prefix . "zen") (envvar . "ZENDESK_TICKET_URL"))))
+      (lexical-let ((x-url (getenv (cdr (assoc 'envvar x))))
+                    (x-pfx (cdr (assoc 'prefix x))))
+        (when x-url
+          (org-link-set-parameters
+           x-pfx
+           :follow (lambda (path)
+                     (org-open-link-from-string (concat x-url path)))
+           :export (lambda (path desc backend)
+                     (message "BACKEND: %s" backend)
+                     (case backend
+                       (html
+                        (format "<a href='%s'>%s</a>"
+                                (concat x-url path)
+                                (or desc (format "%s:%s" x-pfx path))))
+                       ))))))
+
+    (defun jdh-org-html--format-image-data-uri (fn src attrs info)
+      (let ((uri (with-temp-buffer
+                   (insert-file-contents src)
+                   (base64-encode-region (point-min) (point-max))
+                   (goto-char 1)
+                   (insert "data:;base64,")
+                   (buffer-string))))
+        (funcall fn uri attrs info)))
+
     (defun jdh-org-update-velocity ()
       (interactive)
       (save-excursion
         (org-back-to-heading t)
-        (let ((estimate (org-entry-get (point) "Effort"))
-              (time (org-clock-sum-current-item)))
-          (when (and estimate time (< 0 time))
+        (let* ((est-string (org-entry-get (point) "Effort"))
+               (time (org-clock-sum-current-item)))
+          (when (and est-string (org-entry-is-done-p) time (< 0 time))
+            (org-entry-put
+             (point)
+             "Actual"
+             (format "%s" (/ (round (* 10.0 (/ (float time) 60))) 10.0)))
+            (org-back-to-heading t)
             (org-entry-put
              (point)
              "Velocity"
@@ -1054,7 +1139,7 @@ you should place your code here."
                      (/
                       (round
                        (* 10.0
-                          (/ (* 60.0 estimate)
+                          (/ (* 60.0 (string-to-number est-string))
                              (float time))))
                       10.0)))))))
 
@@ -1207,6 +1292,11 @@ you should place your code here."
     (add-hook 'before-save-hook 'jdh--org-update-blocks)
     (add-hook 'after-save-hook 'jdh--org-maybe-export)
     (add-hook 'org-clock-out-hook 'jdh-org-update-velocity)
+    (add-hook 'org-shiftup-hook 'jdh-org-update-velocity)
+    (add-hook 'org-shiftdown-hook 'jdh-org-update-velocity)
+
+    (advice-add 'org-html--format-image
+                :around 'jdh-org-html--format-image-data-uri)
     )
 
 ;; **** org vsts
@@ -1411,23 +1501,15 @@ This function is called at the very end of Spacemacs initialization."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(evil-want-Y-yank-to-eol nil)
  '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
  '(package-selected-packages
    (quote
-    (gnuplot-mode orgtbl-ascii-plot fit-frame omnisharp yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox outshine orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
- '(psc-ide-add-import-on-completion t t)
- '(psc-ide-rebuild-on-save nil t)
+    (toc-org org-bullets evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(safe-local-variable-values
    (quote
     ((projectile-project-test-cmd . "yarn run build-then-test")
      (projectile-project-compilation-cmd . "yarn run build")
-     (projectile-project-name . "MJS")
-     (org-babel-default-header-args:typescript
-      (:cmdline . "--noImplicitAny --strictNullChecks --pretty")
-      (:wrap . "ANSI"))
-     (org-confirm-babel-evaluate)
-     (projectile-project-name . MJS)))))
+     (projectile-project-name . "MJS")))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -1435,3 +1517,4 @@ This function is called at the very end of Spacemacs initialization."
  ;; If there is more than one, they won't work right.
  )
 )
+

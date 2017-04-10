@@ -390,9 +390,7 @@ FILENAME is deleted using `spacemacs/delete-file' function.."
     (when (and
            (not (memq major-mode spacemacs-large-file-modes-list))
            size (> size (* 1024 1024 dotspacemacs-large-file-size))
-           (y-or-n-p (format (concat "%s is a large file, open literally to "
-                                     "avoid performance issues?")
-                             filename)))
+           )
       (setq buffer-read-only t)
       (buffer-disable-undo)
       (fundamental-mode))))
