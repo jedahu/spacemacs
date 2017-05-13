@@ -169,6 +169,7 @@ values."
      ob-http
      org-tree-slide
      outshine
+     ox-pandoc
      purescript-mode
      yaml-mode
      ))
@@ -313,6 +314,7 @@ you should place your code here."
              (:wrap . "ANSI")))
   (setq org-bullets-mode nil)
   (setq org-descriptive-links t)
+  (setq org-edit-src-content-indentation 0)
   (setq org-hide-block-overlays t)
   (setq org-hide-emphasis-markers t)
   (setq org-hide-inline-src-markers t)
@@ -339,6 +341,8 @@ you should place your code here."
   (setq org-pomodoro-time-format "%.2m")
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
+  (setq org-src-preserve-indentation nil)
+  (setq org-src-tab-acts-natively t)
   (setq org-tags-column -80)
   (setq powerline-default-separator 'utf-8)
   (setq powerline-utf-8-separator-left 124)
@@ -539,6 +543,7 @@ you should place your code here."
     "p'" 'projectile-run-eshell)
 
 ;; ** Modules
+
 ;; *** ssh
   (defun jdh-ssh-agent-start ()
     (with-current-buffer (get-buffer-create "*ensure-ssh*")
@@ -1094,7 +1099,7 @@ you should place your code here."
       (org-babel-do-load-languages
        'org-babel-load-languages
        '((emacs-lisp . t)
-         (sh . t)
+         (shell . t)
          ))
       (dolist (face '(org-document-title
                       org-level-1
@@ -1279,6 +1284,10 @@ you should place your code here."
     (spaceline-toggle-buffer-size-off)
     (spaceline-toggle-buffer-position-off))
 
+;; *** typescript
+  (defalias 'ts-mode 'js-mode)
+  (defalias 'ts-edit-mode 'js-mode)
+
 ;; ** Hacks
   (spacemacs/set-leader-keys
     dotspacemacs-emacs-command-key 'helm-M-x)
@@ -1296,6 +1305,9 @@ This function is called at the very end of Spacemacs initialization."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
+ '(package-selected-packages
+   (quote
+    (ox-pandoc yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox outshine orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(safe-local-variable-values
    (quote
     ((projectile-project-test-cmd . "yarn run build-then-test")
