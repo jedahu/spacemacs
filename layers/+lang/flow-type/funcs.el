@@ -1,5 +1,5 @@
 (defun flow-type/--no-auto-start-arg ()
-  (if flow-type/no-auto-start "--no-auto-start" ""))
+  (if flow-type-no-auto-start "--no-auto-start" ""))
 
 (defun flow-type/call-process-on-buffer-to-string (command)
   (with-output-to-string

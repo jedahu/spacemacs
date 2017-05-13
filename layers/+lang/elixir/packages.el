@@ -16,6 +16,7 @@
     elixir-mode
     flycheck
     flycheck-mix
+    flycheck-credo
     ggtags
     helm-gtags
     ob-elixir
@@ -130,12 +131,17 @@
       (add-hook 'elixir-mode-local-vars-hook
                 'spacemacs//elixir-enable-compilation-checking))))
 
+(defun elixir/init-flycheck-credo ()
+  (use-package flycheck-credo
+    :defer t
+    :init (add-hook 'flycheck-mode-hook #'flycheck-credo-setup)))
+
 (defun elixir/init-elixir-mode ()
   (use-package elixir-mode
     :defer t))
 
 (defun elixir/post-init-flycheck ()
-  (spacemacs/add-flycheck-hook 'elixir-mode))
+  (spacemacs/enable-flycheck 'elixir-mode))
 
 (defun elixir/pre-init-org ()
   (spacemacs|use-package-add-hook org

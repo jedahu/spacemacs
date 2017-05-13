@@ -4,6 +4,9 @@
 ;; * Pre init
 (setq os-mswin? (member system-type '(windows-nt ms-dos cygwin)))
 
+(eval-when-compile
+  (require 'cl-lib))
+
 ;; * dotspacemacs/layers
 ;; ** Layers
 (defun dotspacemacs/layers ()
@@ -139,11 +142,11 @@ values."
                                 (agenda . 5)
                                 (bookmarks . 8))
    dotspacemacs-switch-to-buffer-prefers-purpose t
-   dotspacemacs-themes '(default
-                         spacemacs-dark
+   dotspacemacs-themes '(spacemacs-dark
                          solarized-dark
                          solarized-light
                          material
+                         default
                          )
    dotspacemacs-verbose-loading nil
    dotspacemacs-visual-line-move-text t
@@ -155,10 +158,13 @@ values."
    dotspacemacs-additional-packages
    '(
      bnfc
+     calfw
      csharp-mode
      dired-narrow
      dizzee
      evil-vimish-fold
+     excorporate
+     fit-frame
      git-gutter
      helm-aws
      helm-chrome
@@ -167,7 +173,9 @@ values."
      mocha
      nodejs-repl
      ob-http
+     org-gcal
      org-tree-slide
+     orgtbl-ascii-plot
      outshine
      ox-pandoc
      purescript-mode
@@ -198,7 +206,7 @@ you should place your code here."
 
 ;; ** Require
   (require 'generic-x)
-  (require 'cl)
+  (require 'cl-lib)
 
 ;; ** Setq
 ;; *** Global
@@ -258,6 +266,7 @@ you should place your code here."
            :open #[nil "\300p`\"\207" [origami-open-node] 3]
            :open-rec #[nil "\300p`\"\207" [origami-open-node-recursively] 3]
            :close #[nil "\300p`\"\207" [origami-close-node] 3])))
+  (setq excorporate-configuration '("jeremy.hughes@arlo.co" . "https://outlook.office365.com/ews/services.wsdl"))
   (setq explicit-bash-args '("--noediting" "--rcfile" "~/.bashrc_emacs" "-i"))
   (setq flow-executable "flow")
   (setq flow-common-args '("--quiet" "--no-auto-start" "--show-all-errors"))
@@ -295,6 +304,9 @@ you should place your code here."
           ("&&" . ?∧)
           ("||" . ?∨)
           ("void" . ?⊥)))
+  (setq js-doc-parameter-line " * @arg {} %p\n")
+  (setq js-doc-return-line " * @returns {}\n")
+  (setq js-doc-throw-regexp "throw\\|raise")
   (setq markdown-hr-strings (list
                              (make-string 80 ?-)
                              (string-trim-right
@@ -307,12 +319,16 @@ you should place your code here."
   (setq nnml-directory "~/.gmail")
   (setq omnisharp-server-executable-path nil)
   (setq org-agenda-files "~/AGENDA")
+  (setq org-agenda-include-diary t)
   (setq org-babel-default-header-args:sh
         '((:prologue . "exec 2>&1")
              (:epilogue . ":")
              (:results . "output verbatim")
              (:wrap . "ANSI")))
   (setq org-bullets-mode nil)
+  ;; (setq org-confirm-babel-evaluate '(lambda (lang _body)
+  ;;                                     (not (member lang '("gnuplot" "ditaa")))))
+  (setq org-confirm-babel-evaluate nil)
   (setq org-descriptive-links t)
   (setq org-edit-src-content-indentation 0)
   (setq org-hide-block-overlays t)
@@ -325,7 +341,7 @@ you should place your code here."
   (setq org-html-use-infojs t)
   (setq org-html-infojs-options
         '((path . "org-info.js")
-          (view . "overview")
+          (view . "showall")
           (toc . "nil")
           (ftoc . "0")
           (tdepth . "max")
@@ -337,6 +353,7 @@ you should place your code here."
           (home . :html-link-home)))
   (setq org-log-done 'time)
   (setq org-log-into-drawer t)
+  (setq org-open-directory-means-index-dot-org nil)
   (setq org-pomodoro-format ":%s")
   (setq org-pomodoro-time-format "%.2m")
   (setq org-publish-use-timestamps-flag nil)
@@ -344,12 +361,14 @@ you should place your code here."
   (setq org-src-preserve-indentation nil)
   (setq org-src-tab-acts-natively t)
   (setq org-tags-column -80)
+  (setq persp-kill-foreign-buffer-behaviour 'kill)
   (setq powerline-default-separator 'utf-8)
   (setq powerline-utf-8-separator-left 124)
   (setq powerline-utf-8-separator-right 124)
   (setq projectile-indexing-method 'alien)
   (setq projectile-enable-caching t)
   (setq projectile-switch-project-action 'projectile-run-eshell)
+  (setq purpose-user-mode-purposes '((web-mode . edit)))
   (setq shell-default-shell 'shell)
   (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
@@ -465,6 +484,51 @@ you should place your code here."
     (outline-show-entry)
     (outline-show-children))
 
+  (defun jdh-goto-dominating-todo ()
+    (interactive)
+    (if-let (dir (locate-dominating-file default-directory "TODO.org"))
+        (find-file (f-join dir "TODO.org"))
+      (message "No TODO.org found.")))
+
+  (defun jdh-copy-visible (keepp)
+    "Create a copy of the visible part of the current buffer and add
+it to the kill ring so it can be copied into other buffers or programs.
+The copy is created in a temporary buffer and removed after use.
+As a special case, if you have a prefix arg KEEPP, the temporary
+buffer will not be removed but presented to you so that you can
+continue to use it.
+This function is derived from org-export-visible."
+    (interactive "P")
+    (let* ((file buffer-file-name)
+           (buffer (get-buffer-create "*Copy Visible*"))
+           s e)
+      (with-current-buffer buffer (erase-buffer))
+      (save-excursion
+        (setq s (goto-char (point-min)))
+        (while (not (= (point) (point-max)))
+          (goto-char (jdh-find-invisible))
+          (append-to-buffer buffer s (point))
+          (setq s (goto-char (jdh-find-visible))))
+        (goto-char (point-min))
+        (set-buffer buffer)
+        (kill-new (buffer-substring (point-min) (point-max)))
+        (if (not keepp)
+            (kill-buffer buffer)
+          (switch-to-buffer-other-window buffer)
+          (goto-char (point-min))))))
+
+  (defun jdh-find-visible ()
+    (let ((s (point)))
+      (while (and (not (= (point-max) (setq s (next-overlay-change s))))
+                  (get-char-property s 'invisible)))
+      s))
+
+  (defun jdh-find-invisible ()
+    (let ((s (point)))
+      (while (and (not (= (point-max) (setq s (next-overlay-change s))))
+                  (not (get-char-property s 'invisible))))
+      s))
+
 ;; ** Services
 
 ;; ** Modes
@@ -518,6 +582,8 @@ you should place your code here."
   (evil-leader/set-key "bU" 'bury-buffer)
   (evil-leader/set-key "e," 'flycheck-display-error-at-point)
 
+  (evil-leader/set-key "xts" 'transpose-sexps)
+
   (evil-define-key 'normal sh-mode-map
     (kbd "<backtab>") 'outshine-cycle-buffer)
 
@@ -540,9 +606,17 @@ you should place your code here."
     "zk" 'org-previous-visible-heading)
 
   (spacemacs/set-leader-keys
-    "p'" 'projectile-run-eshell)
+    "p'" 'projectile-run-eshell
+    "po" 'jdh-goto-dominating-todo)
 
 ;; ** Modules
+
+;; *** Elisp
+
+  (defun jdh--emacs-lisp-mode-setup ()
+    (setq-local tab-width 8))
+
+  (add-hook 'emacs-lisp-mode-hook 'jdh--emacs-lisp-mode-setup)
 
 ;; *** ssh
   (defun jdh-ssh-agent-start ()
@@ -669,8 +743,6 @@ you should place your code here."
 
 ;; *** flycheck
   (with-eval-after-load 'flycheck
-    (require 'cl)
-
     (defun jdh--flycheck-eslint-to-info (errs)
       (dolist (e errs)
         (when (eq 'javascript-eslint (flycheck-error-checker e))
@@ -698,7 +770,7 @@ you should place your code here."
                   (cons beg end)))))
         (funcall fun err mode)))
 
-    (advice-add 'flycheck-parse-checkstyle :filter-return 'jdh--flycheck-eslint-to-info)
+    ;; (advice-add 'flycheck-parse-checkstyle :filter-return 'jdh--flycheck-eslint-to-info)
 
     (advice-add 'flycheck-error-region-for-mode :around 'jdh--flycheck-flow-coverage-region)
 
@@ -822,6 +894,7 @@ you should place your code here."
       (setq-local comment-start "//")
       (setq-local comment-empty-lines t)
       (eldoc-mode -1)
+      (company-mode -1)
       (if jdh--outorg-in-edit-p
             (setq org-descriptive-links nil)
         (flycheck-mode 1))
@@ -1019,11 +1092,63 @@ you should place your code here."
 ;; *** Org
   (with-eval-after-load 'org
     (require 'org-agenda)
+    (require 'org-collector)
+
+    (dolist (x '(((prefix . "tfs") (envvar . "TFS_WORKITEM_URL"))
+                 ((prefix . "zen") (envvar . "ZENDESK_TICKET_URL"))))
+      (lexical-let ((x-url (getenv (cdr (assoc 'envvar x))))
+                    (x-pfx (cdr (assoc 'prefix x))))
+        (when x-url
+          (org-link-set-parameters
+           x-pfx
+           :follow (lambda (path)
+                     (org-open-link-from-string (concat x-url path)))
+           :export (lambda (path desc backend)
+                     (message "BACKEND: %s" backend)
+                     (case backend
+                       (html
+                        (format "<a href='%s'>%s</a>"
+                                (concat x-url path)
+                                (or desc (format "%s:%s" x-pfx path))))
+                       ))))))
+
+    (defun jdh-org-html--format-image-data-uri (fn src attrs info)
+      (let ((uri (with-temp-buffer
+                   (insert-file-contents src)
+                   (base64-encode-region (point-min) (point-max))
+                   (goto-char 1)
+                   (insert "data:;base64,")
+                   (buffer-string))))
+        (funcall fn uri attrs info)))
+
+    (defun jdh-org-update-velocity ()
+      (interactive)
+      (save-excursion
+        (org-back-to-heading t)
+        (let* ((est-string (org-entry-get (point) "Effort"))
+               (time (org-clock-sum-current-item)))
+          (when (and est-string (org-entry-is-done-p) time (< 0 time))
+            (org-entry-put
+             (point)
+             "Actual"
+             (format "%s" (/ (round (* 10.0 (/ (float time) 60))) 10.0)))
+            (org-back-to-heading t)
+            (org-entry-put
+             (point)
+             "Velocity"
+             (format "%s"
+                     (/
+                      (round
+                       (* 10.0
+                          (/ (* 60.0 (string-to-number est-string))
+                             (float time))))
+                      10.0)))))))
 
     (defun jdh-org-insert-olp (path &optional sort fn top)
       (let ((start (point)))
         (if top
-            (org-insert-heading)
+            (progn (goto-char (point-max))
+                   (org-insert-heading nil nil 'top))
           (org-insert-subheading '(4)))
         (insert (car path))
         (dolist (p (cdr path))
@@ -1035,7 +1160,7 @@ you should place your code here."
           (apply #'org-sort-entries sort))))
 
     (defun jdh-org-ensure-olp (path &optional overflow sort fn)
-      (if-let (m (ignore-errors (org-find-olp path 'this-buffer)))
+      (if-let (m (and path (ignore-errors (org-find-olp path 'this-buffer))))
           (progn
             (goto-char (marker-position m))
             (if overflow
@@ -1100,6 +1225,8 @@ you should place your code here."
        'org-babel-load-languages
        '((emacs-lisp . t)
          (shell . t)
+         (sh . t)
+         (gnuplot . t)
          ))
       (dolist (face '(org-document-title
                       org-level-1
@@ -1166,6 +1293,88 @@ you should place your code here."
     (add-hook 'org-mode-hook 'jdh--org-mode-setup)
     (add-hook 'before-save-hook 'jdh--org-update-blocks)
     (add-hook 'after-save-hook 'jdh--org-maybe-export)
+    (add-hook 'org-clock-out-hook 'jdh-org-update-velocity)
+    (add-hook 'org-shiftup-hook 'jdh-org-update-velocity)
+    (add-hook 'org-shiftdown-hook 'jdh-org-update-velocity)
+
+    (advice-add 'org-html--format-image
+                :around 'jdh-org-html--format-image-data-uri)
+    )
+
+;; **** org vsts
+  (with-eval-after-load 'org
+    (require 'request)
+
+    (defvar jdh-vsts-url nil)
+    (defvar jdh-vsts-auth nil)
+
+    (defun jdh-vsts-get-workitem (id fn)
+      (interactive)
+      (lexical-let ((f fn))
+        (request
+         (format "%s/_apis/wit/workitems" jdh-vsts-url)
+         :type "GET"
+         :params `(("api-version" . "1.0")
+                   ("ids" . ,id))
+         :headers `(("Authorization" . ,(format "Basic %s" jdh-vsts-auth)))
+         :parser 'json-read
+         :error (cl-function
+                 (lambda (&rest args)
+                   (insert "Error fetching work item")))
+         :success (cl-function
+                   (lambda (&key data &allow-other-keys)
+                     (funcall f data))))))
+
+    (defun jdh-org-vsts-update-workitem ()
+      (save-excursion
+        (org-back-to-heading)
+        (lexical-let ((buf (current-buffer)))
+          (when-let (wid (org-entry-get (point) "VSTS_WORKITEM_ID"))
+            (message (format "Fetching WID %s" wid))
+            (jdh-vsts-get-workitem
+             wid
+             #'(lambda (data)
+                 (with-current-buffer buf
+                   (let* ((elem (org-element-at-point))
+                          (end (plist-get (second elem) :end))
+                          (fields
+                           (assoc-default
+                            'fields
+                            (aref (assoc-default 'value data) 0)))
+                          (descr (assoc-default 'System.Description fields))
+                          (crit (assoc-default 'Microsoft.VSTS.Common.AcceptanceCriteria fields)))
+
+                     (when (search-forward-regexp
+                            "^:DESCRIPTION:[ \t]*\n\\(?:[^\n]*\n\\)*?:END:[ \t]*?$"
+                            end 'noerror)
+                       (replace-match ""))
+                     (shr-ensure-newline)
+                     (insert ":DESCRIPTION:\n")
+                     (let ((descr-start (point)))
+                       (insert (format "%s" descr))
+                       (shr-render-region descr-start (point)))
+                     (if (looking-at "^[[:space:]]*$")
+                       (delete-region (point) (point-at-eol))
+                       (insert "\n"))
+                     (insert ":END:")
+
+                     (org-back-to-heading)
+                     (let ((elem (org-element-at-point))
+                           (end (plist-get (second elem) :end)))
+                       (when (search-forward-regexp
+                              "^:ACCEPTANCE_CRITERIA:[ \t]*\n\\(?:[^\n]*\n\\)*?:END:[ \t]*?$"
+                              end 'noerror)
+                         (replace-match ""))
+
+                       (shr-ensure-newline)
+                       (insert ":ACCEPTANCE_CRITERIA:\n")
+                       (let ((crit-start (point)))
+                         (insert (format "%s" crit))
+                         (shr-render-region crit-start (point)))
+                       (shr-ensure-newline)
+                       (insert ":END:"))
+
+                     ))))))))
     )
 
 ;; **** org-projectile
@@ -1185,33 +1394,23 @@ you should place your code here."
                     "/")))
         (find-file todo)
         (jdh-org-ensure-olp path)
+        (forward-line -1)
         ))
-
-    (setq org-projectile:subheading-selection t)
-
-    (setq org-projectile:project-name-to-location
-          (lambda (pname)
-            (if org-projectile:subheading-selection
-                (progn (message "prompting")
-                       (goto-char (point-min))
-                       (org-projectile:prompt-for-subheadings 'tree)
-                       t)
-              (goto-char (point-max))
-              nil)))
 
     (setq org-capture-templates
           (list
            '("p" "Project TODO" entry
                  (function jdh--find-todo-location)
-                 "* TODO %^{name|%i}\n[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]%?"
+                 "* TODO %^{name|%i}
+[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]"
                  ))))
 
 ;; **** Outorg
   (with-eval-after-load 'outorg
-    (defun orgen--outorg-wrap-source-in-block (fun lang &optional _)
+    (defun jdh--outorg-wrap-source-in-block (fun lang &optional _)
       (funcall fun lang))
 
-    (defun orgen--outorg-in-babel-load-languages-p (fun _) t)
+    (defun jdh--outorg-in-babel-load-languages-p (fun _) t)
 
     (defun jdh--outorg-copy-edits-and-exit ()
       (interactive)
@@ -1226,9 +1425,9 @@ you should place your code here."
           (forward-line -1)
           (delete-region (point) (point-at-eol)))))
 
-    (advice-add 'outorg-wrap-source-in-block :around 'orgen--outorg-wrap-source-in-block)
+    (advice-add 'outorg-wrap-source-in-block :around 'jdh--outorg-wrap-source-in-block)
 
-    (advice-add 'outorg-in-babel-load-languages-p :around 'orgen--outorg-in-babel-load-languages-p)
+    (advice-add 'outorg-in-babel-load-languages-p :around 'jdh--outorg-in-babel-load-languages-p)
 
     (add-to-list 'outorg-language-name-assocs '(js-mode . js))
     (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
@@ -1278,6 +1477,10 @@ you should place your code here."
                         (delete-if-not #'buffer-live-p (persp-buffers p)))))
             (persp-persps))))
 
+;; *** purpose
+  (with-eval-after-load 'window-purpose
+    (purpose-compile-user-configuration))
+
 ;; *** spaceline
   (with-eval-after-load 'spaceline-segments
     (spaceline-toggle-buffer-encoding-abbrev-off)
@@ -1307,17 +1510,12 @@ This function is called at the very end of Spacemacs initialization."
  '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
  '(package-selected-packages
    (quote
-    (ox-pandoc yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox outshine orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (meghanada groovy-mode groovy-imports pcache gradle-mode fuzzy company-emacs-eclim eclim yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox ox-pandoc outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(safe-local-variable-values
    (quote
     ((projectile-project-test-cmd . "yarn run build-then-test")
      (projectile-project-compilation-cmd . "yarn run build")
-     (projectile-project-name . "MJS")
-     (org-babel-default-header-args:typescript
-      (:cmdline . "--noImplicitAny --strictNullChecks --pretty")
-      (:wrap . "ANSI"))
-     (org-confirm-babel-evaluate)
-     (projectile-project-name . MJS)))))
+     (projectile-project-name . "MJS")))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -1325,3 +1523,4 @@ This function is called at the very end of Spacemacs initialization."
  ;; If there is more than one, they won't work right.
  )
 )
+

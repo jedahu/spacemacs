@@ -1,3 +1,14 @@
+;;; packages.el --- Go Layer packages File for Spacemacs
+;;
+;; Copyright (c) 2012-2017 Sylvain Benner & Contributors
+;;
+;; Author: Sylvain Benner <sylvain.benner@gmail.com>
+;; URL: https://github.com/syl20bnr/spacemacs
+;;
+;; This file is not part of GNU Emacs.
+;;
+;;; License: GPLv3
+
 (setq go-packages
       '(
         (company-go :toggle (configuration-layer/package-usedp 'company))
@@ -7,6 +18,7 @@
                                              'flycheck)))
         ggtags
         helm-gtags
+        exec-path-from-shell
         go-eldoc
         go-mode
         go-guru
@@ -24,14 +36,16 @@
       :variables company-go-show-annotation t)))
 
 (defun go/post-init-flycheck ()
-  (spacemacs/add-flycheck-hook 'go-mode))
+  (spacemacs/enable-flycheck 'go-mode))
+
+(defun go/pre-init-exec-path-from-shell ()
+  (spacemacs|use-package-add-hook exec-path-from-shell
+    :pre-config
+    (dolist (var '("GOPATH" "GO15VENDOREXPERIMENT") exec-path-from-shell-variables)
+      (unless (or (member var exec-path-from-shell-variables) (getenv var))
+        (push var exec-path-from-shell-variables)))))
 
 (defun go/init-go-mode()
-  (when (memq window-system '(mac ns x))
-    (dolist (var '("GOPATH" "GO15VENDOREXPERIMENT"))
-      (unless (getenv var)
-        (exec-path-from-shell-copy-env var))))
-
   (use-package go-mode
     :defer t
     :init
