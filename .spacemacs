@@ -1451,6 +1451,39 @@ This function is derived from org-export-visible."
     (spacemacs/set-leader-keys-for-minor-mode 'org-tree-slide-mode
       "Z" 'org-tree-slide-content))
 
+;; **** org include dblock
+
+  (defmacro jdh--org-include-now (path &rest body)
+    `(save-excursion
+        (insert "#+INCLUDE: ")
+        (insert (prin1-to-string ,path))
+      (save-restriction
+        (narrow-to-region
+          (line-beginning-position)
+          (+ 1 (line-end-position)))
+        (org-export-expand-include-keyword)
+        ,@body)))
+
+  (defun org-dblock-write:include (params)
+    (jdh--org-include-now (plist-get params :path)))
+
+  (defun org-dblock-write:include-src (params)
+    (let ((lang (plist-get params :lang))
+          (path (plist-get params :path)))
+      (message "LANG %s" lang)
+      (dolist (p '(:lang :path :name :content :indentation-column))
+        (setq params (org-plist-delete params p)))
+      (jdh--org-include-now
+        path
+        (goto-char (point-min))
+        (let ((text (org-element-property :value (org-element-at-point))))
+          (message "TEXT %s" text)
+          (delete-region (point-min) (point-max))
+          (insert (format "#+BEGIN_SRC %s " lang))
+          (dolist (p params)
+            (insert (prin1-to-string p) " "))
+          (insert (format "\n%s#+END_SRC\n" text))))))
+
 ;; *** outshine
   (with-eval-after-load 'outshine
     (defvar jdh--outorg-in-edit-p nil)
