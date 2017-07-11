@@ -144,6 +144,10 @@ values."
    dotspacemacs-switch-to-buffer-prefers-purpose t
    dotspacemacs-themes '(tsdh-dark
                          wombat
+                         spacemacs-dark
+                         solarized-dark
+                         solarized-light
+                         material
                          default
                          )
    dotspacemacs-verbose-loading nil
@@ -175,6 +179,7 @@ values."
      org-tree-slide
      orgtbl-ascii-plot
      outshine
+     ox-pandoc
      purescript-mode
      yaml-mode
      ))
@@ -287,6 +292,7 @@ you should place your code here."
                   (nnimap-address "imap.gmail.com")
                   (nnimap-server-port 993)
                   (nnimap-stream ssl))))
+  (setq helm-buffer-skip-remote-checking t)
   (setq helm-follow-mode-persistent nil)
   (setq holy-mode nil)
   (setq jdh--pulp-build "./node_modules/.bin/pulp build")
@@ -327,9 +333,7 @@ you should place your code here."
   ;;                                     (not (member lang '("gnuplot" "ditaa")))))
   (setq org-confirm-babel-evaluate nil)
   (setq org-descriptive-links t)
-  (setq org-gcal-client-id "1094137197380-a6epgtjno65j4dc4t5841u9q12t0q5qt.apps.googleusercontent.com")
-  (setq org-gcal-client-secret "h4p__gunYsHwgb7sJj21ZxKy")
-  (setq org-gcal-file-alist '(("jeremy.hughes@learningsourcehq.com" . "~/CALENDAR.org")))
+  (setq org-edit-src-content-indentation 0)
   (setq org-hide-block-overlays t)
   (setq org-hide-emphasis-markers t)
   (setq org-hide-inline-src-markers t)
@@ -350,6 +354,7 @@ you should place your code here."
           (ltoc . "nil")
           (up . :html-link-up)
           (home . :html-link-home)))
+  (setq org-list-allow-alphabetical t)
   (setq org-log-done 'time)
   (setq org-log-into-drawer t)
   (setq org-open-directory-means-index-dot-org t)
@@ -357,6 +362,8 @@ you should place your code here."
   (setq org-pomodoro-time-format "%.2m")
   (setq org-publish-use-timestamps-flag nil)
   (setq org-src-fontify-natively t)
+  (setq org-src-preserve-indentation nil)
+  (setq org-src-tab-acts-natively t)
   (setq org-tags-column -80)
   (setq persp-kill-foreign-buffer-behaviour 'kill)
   (setq powerline-default-separator 'utf-8)
@@ -364,9 +371,9 @@ you should place your code here."
   (setq powerline-utf-8-separator-right 124)
   (setq projectile-indexing-method 'alien)
   (setq projectile-enable-caching t)
-  (setq projectile-switch-project-action 'projectile-run-eshell)
   (setq purpose-user-mode-purposes '((web-mode . edit)
                                      (typescript-mode . edit)))
+  (setq projectile-switch-project-action 'projectile-run-shell)
   (setq shell-default-shell 'shell)
   (setq shr-external-browser 'browse-url-xdg-open)
   (setq smtpmail-default-smtp-server "smtp.gmail.com")
@@ -899,6 +906,7 @@ This function is derived from org-export-visible."
       )
 
     (add-hook 'js2-mode-hook 'jdh--js2-mode-setup)
+    (add-hook 'js-mode-hook 'flycheck-mode)
 
     (spacemacs/set-leader-keys-for-major-mode 'js2-mode
       "ii" 'jdh-js-insert-import
@@ -1222,6 +1230,7 @@ This function is derived from org-export-visible."
       (org-babel-do-load-languages
        'org-babel-load-languages
        '((emacs-lisp . t)
+         (shell . t)
          (sh . t)
          (gnuplot . t)
          ))
@@ -1517,6 +1526,10 @@ This function is derived from org-export-visible."
     (spaceline-toggle-buffer-size-off)
     (spaceline-toggle-buffer-position-off))
 
+;; *** typescript
+  (define-derived-mode ts-mode js-mode "ts-mode")
+  (define-derived-mode ts-edit-mode js-mode "ts-mode")
+
 ;; ** Hacks
   (spacemacs/set-leader-keys
     dotspacemacs-emacs-command-key 'helm-M-x)
@@ -1536,7 +1549,7 @@ This function is called at the very end of Spacemacs initialization."
  '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
  '(package-selected-packages
    (quote
-    (meghanada groovy-mode groovy-imports pcache gradle-mode fuzzy company-emacs-eclim eclim toc-org org-bullets evil-nerd-commenter yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (powerline emojify websocket scala-mode ghc highlight vimish-fold undo-tree skewer-mode deferred haml-mode dash typescript-mode circe outorg company-quickhelp sbt-mode diminish smartparens evil flycheck haskell-mode company yasnippet avy markdown-mode alert projectile magit magit-popup git-commit with-editor hydra helm helm-core async restclient js2-mode s markdown-edit-indirect meghanada groovy-mode groovy-imports pcache gradle-mode fuzzy company-emacs-eclim eclim yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox ox-pandoc outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(safe-local-variable-values
    (quote
     ((projectile-project-test-cmd . "yarn run build-then-test")
