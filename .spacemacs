@@ -141,7 +141,7 @@ values."
                                 (projects . 7)
                                 (agenda . 5)
                                 (bookmarks . 8))
-   dotspacemacs-switch-to-buffer-prefers-purpose t
+   dotspacemacs-switch-to-buffer-prefers-purpose nil
    dotspacemacs-themes '(tsdh-dark
                          wombat
                          spacemacs-dark
@@ -325,9 +325,9 @@ you should place your code here."
   (setq org-agenda-include-diary t)
   (setq org-babel-default-header-args:sh
         '((:prologue . "exec 2>&1")
-             (:epilogue . ":")
-             (:results . "output verbatim")
-             (:wrap . "ANSI")))
+          (:epilogue . ":")
+          (:results . "output verbatim")
+          (:wrap . "ANSI")))
   (setq org-bullets-mode nil)
   ;; (setq org-confirm-babel-evaluate '(lambda (lang _body)
   ;;                                     (not (member lang '("gnuplot" "ditaa")))))
@@ -803,11 +803,11 @@ This function is derived from org-export-visible."
            (goto-char (marker-position jdh--helm-evil-markers-candidate))))))
 
     (setq helm-evil-markers-map
-      (let ((map (make-sparse-keymap)))
-        (set-keymap-parent map helm-map)
-        (dolist (k (string-to-list "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-          (define-key map (string k) 'jdh--helm-evil-goto-mark-line))
-        (delq nil map)))
+          (let ((map (make-sparse-keymap)))
+            (set-keymap-parent map helm-map)
+            (dolist (k (string-to-list "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+              (define-key map (string k) 'jdh--helm-evil-goto-mark-line))
+            (delq nil map)))
 
     (defun helm-evil-markers ()
       (interactive)
@@ -864,30 +864,38 @@ This function is derived from org-export-visible."
   (with-eval-after-load 'js2-mode
     (defun jdh--js-find-imports ()
       (let ((case-fold-search t))
-        (search-backward-regexp
-         (format "^%s%s[[:space:]]*?$"
-                 (regexp-quote comment-start)
-                 (comment-padleft "[*]+ imports"))
-         nil)))
+        (widen)
+        (goto-char (point-min))
+        (search-forward-regexp  "^import[[:space:]].*$" nil)
+        (goto-char (point-at-bol))))
 
-    (defun jdh-js-insert-import (line)
-      (interactive "*Mimport ")
+    (defun jdh--js-insert-import (imports star)
       (save-excursion
         (save-restriction
           (jdh--js-find-imports)
-          (forward-line 1)
-          (let ((beg (point)))
-            (insert "import " line "\n")
-            (search-forward-regexp "^[[:space:]]*?$" nil 'noerror)
+          (let ((beg (point-at-bol))
+                (line (replace-regexp-in-string
+                       " \\(\\S-+\\)$"
+                       (concat (if star "" "}") " from \"\\1\";")
+                       imports)))
+            (insert "import " (if star "* as " "{") line "\n")
+            (search-forward-regexp "^[[:space:]]*$" nil 'noerror)
             (forward-line -1)
             (sort-lines nil beg (point-at-eol))))))
+
+    (defun jdh-js-insert-import (imports)
+      (interactive "*Mimports ")
+      (jdh--js-insert-import imports nil))
+
+    (defun jdh-js-insert-import* (imports)
+      (interactive "*Mimports ")
+      (jdh--js-insert-import imports t))
 
     (defun jdh-js-sort-imports ()
       (interactive)
       (save-excursion
         (save-restriction
           (jdh--js-find-imports)
-          (forward-line 1)
           (let ((beg (point)))
             (search-forward-regexp "^[[:space:]]*?$" nil 'noerror)
             (forward-line -1)
@@ -908,9 +916,16 @@ This function is derived from org-export-visible."
     (add-hook 'js2-mode-hook 'jdh--js2-mode-setup)
     (add-hook 'js-mode-hook 'flycheck-mode)
 
-    (spacemacs/set-leader-keys-for-major-mode 'js2-mode
+    (spacemacs/set-leader-keys-for-major-mode 'js-mode
       "ii" 'jdh-js-insert-import
+      "i*" 'jdh-js-insert-import*
       "is" 'jdh-js-sort-imports)
+
+    (spacemacs/set-leader-keys-for-major-mode 'typescript-mode
+      "ii" 'jdh-js-insert-import
+      "i*" 'jdh-js-insert-import*
+      "is" 'jdh-js-sort-imports)
+
     ;; (defun jdh--js-mode-setup ()
     ;;   (spacemacs/toggle-auto-completion-on)
     ;;   (outline-minor-mode 1)
@@ -1407,8 +1422,7 @@ This function is derived from org-export-visible."
           (list
            '("p" "Project TODO" entry
                  (function jdh--find-todo-location)
-                 "* TODO %^{name|%i}
-[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]"
+                 "* TODO %^{name|%i}\n[[file:%(jdh--todo-relative-path \"%F\")::%i][source]]"
                  ))))
 
 ;; **** Outorg
@@ -1516,6 +1530,12 @@ This function is derived from org-export-visible."
                         (delete-if-not #'buffer-live-p (persp-buffers p)))))
             (persp-persps))))
 
+;; *** projectile
+  (with-eval-after-load 'projectile
+    (projectile-register-project-type
+      'nix '("default.nix")
+      :compile "nix-build -A main"))
+
 ;; *** purpose
   (with-eval-after-load 'window-purpose
     (purpose-compile-user-configuration))
@@ -1529,6 +1549,8 @@ This function is derived from org-export-visible."
 ;; *** typescript
   (define-derived-mode ts-mode js-mode "ts-mode")
   (define-derived-mode ts-edit-mode js-mode "ts-mode")
+
+  (add-hook 'typescript-mode-hook 'flycheck-mode)
 
 ;; ** Hacks
   (spacemacs/set-leader-keys
