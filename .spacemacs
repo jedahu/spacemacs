@@ -141,7 +141,7 @@ values."
                                 (projects . 7)
                                 (agenda . 5)
                                 (bookmarks . 8))
-   dotspacemacs-switch-to-buffer-prefers-purpose t
+   dotspacemacs-switch-to-buffer-prefers-purpose nil
    dotspacemacs-themes '(tsdh-dark
                          wombat
                          spacemacs-dark
@@ -432,6 +432,9 @@ you should place your code here."
         (goto-char expr-beg)
         (forward-sexp))))
 
+  (defun date-today ()
+    (format-time-string "%Y-%m-%d"))
+
   (defun process-file-to-string (cmd &rest args)
     (with-output-to-string
       (with-current-buffer
@@ -611,7 +614,7 @@ This function is derived from org-export-visible."
     "zk" 'org-previous-visible-heading)
 
   (spacemacs/set-leader-keys
-    "p'" 'projectile-run-eshell
+    "p'" 'projectile-run-shell
     "po" 'jdh-goto-dominating-todo)
 
 ;; ** Modules
@@ -844,6 +847,29 @@ This function is derived from org-export-visible."
             :buffer "*helm evil-markers*"
             ))
     )
+
+;; *** Hugo
+  (defun hugo-new-post (title)
+    (interactive (list (read-from-minibuffer "Title: ")))
+    (let* ((filename (downcase (concat
+                                (replace-regexp-in-string "\\W" "-" title)
+                                ".org")))
+           (path (concat
+                  (projectile-project-root)
+                  "content/post/"
+                  (date-today)
+                  "-"
+                  filename)))
+      (if (file-exists-p path)
+          (message "File already exists!")
+        (switch-to-buffer (generate-new-buffer filename))
+        (insert "#+TITLE: " title)
+        (insert "\n#+DATE: " (date-today))
+        ;; (insert "\n#+URL: /" url "/")
+        ;; (insert "\n#+BANNER: \n#+CATEGORIES: \n#+TAGS:\n\n")
+        (org-mode)
+        (write-file path)
+        (goto-char (point-max)))))
 
 ;; *** ispell
   (with-eval-after-load 'ispell
@@ -1529,6 +1555,7 @@ This function is derived from org-export-visible."
 ;; *** typescript
   (define-derived-mode ts-mode js-mode "ts-mode")
   (define-derived-mode ts-edit-mode js-mode "ts-mode")
+  (define-derived-mode check-mode yaml-mode "check-mode")
 
 ;; ** Hacks
   (spacemacs/set-leader-keys
@@ -1552,7 +1579,8 @@ This function is called at the very end of Spacemacs initialization."
     (powerline emojify websocket scala-mode ghc highlight vimish-fold undo-tree skewer-mode deferred haml-mode dash typescript-mode circe outorg company-quickhelp sbt-mode diminish smartparens evil flycheck haskell-mode company yasnippet avy markdown-mode alert projectile magit magit-popup git-commit with-editor hydra helm helm-core async restclient js2-mode s markdown-edit-indirect meghanada groovy-mode groovy-imports pcache gradle-mode fuzzy company-emacs-eclim eclim yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox ox-pandoc outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
  '(safe-local-variable-values
    (quote
-    ((projectile-project-test-cmd . "yarn run build-then-test")
+    ((projectile-project-compilation-cmd . "nix-build -A site -o gettyped")
+     (projectile-project-test-cmd . "yarn run build-then-test")
      (projectile-project-compilation-cmd . "yarn run build")
      (projectile-project-name . "MJS")))))
 (custom-set-faces
