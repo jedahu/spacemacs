@@ -1180,7 +1180,7 @@ otherwise the current subtree."
       ;; Special case R-mode
       (if (eq mode 'ess-mode)
           (funcall 'R-mode)
-        (funcall mode)))
+        (ignore-errors (funcall mode))))
 
     ;; Convert oldschool elisp headers to outshine headers
     (when outorg-oldschool-elisp-headers-p
@@ -1679,7 +1679,7 @@ With ARG, act conditional on the raw value of ARG:
       ;; special case R-mode
       (if (eq mode 'ess-mode)
 	  (funcall 'R-mode)
-	(funcall mode)))
+	(ignore-errors (funcall mode))))
     (outorg-convert-back-to-code)
     (outorg-save-markers (append outorg-tracked-markers
 				 outorg-tracked-org-markers))
