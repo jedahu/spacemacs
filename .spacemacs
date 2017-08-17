@@ -53,6 +53,7 @@ values."
              slack-enable-emoji t
              slack-prefer-current-team t)
       smerge
+      solarized-theme
       sql
       syntax-checking
       typescript
@@ -142,7 +143,8 @@ values."
                                 (agenda . 5)
                                 (bookmarks . 8))
    dotspacemacs-switch-to-buffer-prefers-purpose nil
-   dotspacemacs-themes '(tsdh-dark
+   dotspacemacs-themes '(solarized
+                         tsdh-dark
                          wombat
                          spacemacs-dark
                          solarized-dark
@@ -172,6 +174,7 @@ values."
      helm-chrome
      kv
      material-theme
+     markdown-edit-indirect
      mocha
      nodejs-repl
      ob-http
@@ -273,7 +276,8 @@ you should place your code here."
   (setq flow-executable "flow")
   (setq flow-common-args '("--quiet" "--no-auto-start" "--show-all-errors"))
   (setq flycheck-display-errors-function
-        #'flycheck-display-error-messages-unless-error-list)
+        ;; #'flycheck-display-error-messages-unless-error-list)
+        #'flycheck-display-error-messages)
   (setq flycheck-error-list-minimum-level 'error)
   (setq flycheck-javascript-flow-args '("--no-auto-start"))
   (setq flycheck-javascript-flow-executable flow-executable)
@@ -310,6 +314,7 @@ you should place your code here."
   (setq js-doc-parameter-line " * @arg {} %p\n")
   (setq js-doc-return-line " * @returns {}\n")
   (setq js-doc-throw-regexp "throw\\|raise")
+  (setq markdown-fontify-code-blocks-natively t)
   (setq markdown-hr-strings (list
                              (make-string 80 ?-)
                              (string-trim-right
@@ -444,6 +449,10 @@ you should place your code here."
   (defun save-all ()
     (interactive)
     (save-some-buffers t))
+
+  (defun jdh--no-flycheck (fn &rest args)
+    (flet ((flycheck-mode (&rest args)))
+      (apply fn args)))
 
   (defun sort-lines-as-exprs (reverse beg end)
     "sort lines, or whole expression if line ends mid-expression."
@@ -786,6 +795,14 @@ This function is derived from org-export-visible."
     (flycheck-add-next-checker 'javascript-flow-coverage 'javascript-eslint)
     )
 
+
+;; *** Haskell
+  (with-eval-after-load 'haskell
+    (defun jdh--haskell-mode-setup ()
+      (setq-local comment-padding " "))
+
+    (add-hook 'haskell-mode-hook 'jdh--haskell-mode-setup))
+
 ;; *** Helm
   (with-eval-after-load 'helm
     (define-key helm-map (kbd "C-<return>") 'helm-execute-persistent-action)
@@ -887,7 +904,7 @@ This function is derived from org-export-visible."
     (setq ispell-hunspell-dictionary-alist ispell-dictionary-alist))
 
 ;; *** javascript
-  (with-eval-after-load 'js2-mode
+  (with-eval-after-load 'js
     (defun jdh--js-find-imports ()
       (let ((case-fold-search t))
         (widen)
@@ -939,8 +956,13 @@ This function is derived from org-export-visible."
         (flycheck-mode 1))
       )
 
+    (defun jdh--js-mode-setup ()
+      (if jdh--outorg-in-edit-p
+          (setq org-descriptive-links nil)
+        (flycheck-mode 1)))
+
     (add-hook 'js2-mode-hook 'jdh--js2-mode-setup)
-    (add-hook 'js-mode-hook 'flycheck-mode)
+    (add-hook 'js-mode-hook 'jdh--js-mode-setup)
 
     (spacemacs/set-leader-keys-for-major-mode 'js-mode
       "ii" 'jdh-js-insert-import
@@ -1348,6 +1370,258 @@ This function is derived from org-export-visible."
                 :around 'jdh-org-html--format-image-data-uri)
     )
 
+;; **** org overrides
+  (defun org-show-block-all ()
+    "Unfold all blocks in the current buffer."
+    (interactive)
+    ;; JDH prevent wrong-type-argment squencep t
+    ;; (mapc #'delete-overlay org-hide-block-overlays)
+    (setq org-hide-block-overlays nil))
+
+  (defun outorg-copy-and-convert ()
+    "Copy code buffer content to temp buffer and convert it to Org syntax.
+If `outorg-edit-whole-buffer' is non-nil, copy the whole buffer,
+otherwise the current subtree."
+
+    (when (buffer-live-p (get-buffer outorg-edit-buffer-name))
+      (if (y-or-n-p (format "%s exists - save and overwrite contents " outorg-edit-buffer-name))
+          (with-current-buffer outorg-edit-buffer-name
+            (outorg-save-edits-to-tmp-file))
+        (user-error "Edit as Org cancelled.")))
+
+    (let* ((edit-buffer (get-buffer-create outorg-edit-buffer-name)))
+      (save-restriction
+
+        ;; Erase edit-buffer
+        (with-current-buffer edit-buffer
+          (erase-buffer))
+
+        ;; Copy code buffer content
+        (copy-to-buffer edit-buffer
+                        (if outorg-edit-whole-buffer-p
+                            (point-min)
+                          (save-excursion
+                            (outline-back-to-heading 'INVISIBLE-OK)
+                            (point)))
+                        (if outorg-edit-whole-buffer-p
+                            (point-max)
+                          (save-excursion
+                            (outline-end-of-subtree)
+                            (point)))))
+
+      ;; Switch to edit buffer
+      (when (one-window-p)
+        (split-window-sensibly (get-buffer-window)))
+      (switch-to-buffer-other-window edit-buffer)
+
+      ;; Reinstall outorg-markers
+      (outorg-reinstall-markers-in-region (point-min))
+
+      ;; Set point
+      (goto-char outorg-edit-buffer-point-marker)
+
+      ;; Activate programming language major mode and convert to org
+      (let ((mode (outorg-get-buffer-mode (marker-buffer outorg-code-buffer-point-marker))))
+        ;; Special case R-mode
+        (if (eq mode 'ess-mode)
+            (funcall 'R-mode)
+          ;; JDH prevent tide and flycheck from sabotaging things
+          (ignore-errors (funcall mode))))
+
+      ;; Convert oldschool elisp headers to outshine headers
+      (when outorg-oldschool-elisp-headers-p
+        (outorg-convert-oldschool-elisp-buffer-to-outshine)
+        ;; Reset var to original state after conversion
+        (setq outorg-oldschool-elisp-headers-p t))
+
+      ;; Call conversion function
+      (outorg-convert-to-org)
+
+      ;; Change major mode to org-mode
+      (org-mode)
+
+      ;; Activate minor mode outorg-edit-minor-mode
+      (outorg-edit-minor-mode)
+
+      ;; Set outline visibility
+      (if (not outorg-edit-whole-buffer-p)
+          (show-all)
+        (hide-sublevels 3)
+        (ignore-errors (show-subtree))
+
+        ;; Insert export template
+        (cond (outorg-ask-user-for-export-template-file-p
+               (call-interactively 'outorg-insert-export-template-file))
+              (outorg-insert-default-export-template-p
+               (outorg-insert-default-export-template))))
+
+      ;; Update md5 for watchdoc
+      (when (and outorg-propagate-changes-p
+                 (require 'org-watchdoc nil t))
+        (org-watchdoc-set-md5))
+
+      ;; Reset buffer-undo-list
+      (setq buffer-undo-list nil)))
+
+  (defun outorg-convert-back-to-code ()
+    "Convert edit-buffer content back to programming language syntax.
+Assume that edit-buffer major-mode has been set back to the
+programming-language major-mode of the associated code-buffer
+before this function is called."
+    (let* ((comment-style "plain")	; "multi-line"?
+           (buffer-mode (outorg-get-buffer-mode))
+           (babel-lang (outorg-get-babel-name buffer-mode))
+           (example-block-p (and (not (outorg-in-babel-load-languages-p buffer-mode))
+                                 (not babel-lang)))
+           (regexp (if example-block-p
+                       (concat "\\(?:#\\+begin_example" "[^\000]*?\n#\\+end_example\\)") ; NUL char
+                     (format "%s%s%s"
+                             "\\(?:^#\\+begin_src[[:space:]]+"
+                             (regexp-quote (outorg-get-babel-name buffer-mode 'AS-STRG-P))
+                             "[[:space:]]*?\n[^\000]*?\n#\\+end_src\\)")))
+           (first-block-p t))
+
+      ;; 1st run: outcomment text, delete (active) block delimiters
+      ;; reset (left-over) marker
+      (move-marker outorg-beginning-of-code nil)
+      (move-marker outorg-end-of-code nil)
+
+      ;; 1st run: outcomment text
+      (goto-char (point-min))
+      (while (re-search-forward regexp nil 'NOERROR)
+        ;; special case 1st block
+        (if first-block-p
+            (progn
+              ;; Handle first block
+              (move-marker outorg-beginning-of-code (match-beginning 0))
+              (move-marker outorg-end-of-code (match-end 0))
+              (if (eq (point-min) (match-beginning 0))
+                  (goto-char (match-end 0))
+                (save-match-data
+                  (ignore-errors
+                    (comment-region (point-min) (marker-position outorg-beginning-of-code)))))
+              (setq first-block-p nil))
+          ;; default case
+          (let ((previous-beg-src (marker-position outorg-beginning-of-code))
+                (previous-end-src (marker-position outorg-end-of-code)))
+            (move-marker outorg-beginning-of-code (match-beginning 0))
+            (move-marker outorg-end-of-code (match-end 0))
+            (save-match-data
+              (ignore-errors
+                (comment-region previous-end-src (marker-position outorg-beginning-of-code))))
+            (save-excursion
+              (goto-char previous-end-src)
+              (delete-region (1- (point-at-bol)) (point-at-eol))
+              (goto-char previous-beg-src)
+              (if (eq (point-at-bol) (point-min))
+                  (delete-region 1 (1+ (point-at-eol)))
+                (delete-region (1- (point-at-bol)) (point-at-eol)))))))
+      ;; special case last block
+      (ignore-errors
+        (comment-region (if first-block-p
+                            (point-min)
+                          outorg-end-of-code)
+                        (point-max)))
+      (unless first-block-p		; no src-block so far
+        (save-excursion
+          (goto-char outorg-end-of-code)
+          (delete-region (1- (point-at-bol)) (point-at-eol))
+          (goto-char outorg-beginning-of-code)
+          (delete-region (1- (point-at-bol)) (point-at-eol)))))
+    (move-marker outorg-beginning-of-code nil)
+    (move-marker outorg-end-of-code nil)
+    ;; 2nd (optional) run: convert elisp headers to oldschool
+    (when outorg-oldschool-elisp-headers-p
+      (save-excursion
+        (goto-char (point-min))
+        (while (re-search-forward "\\(^;;\\)\\( [*]+\\)\\( \\)" nil 'NOERROR)
+          (let* ((org-header-level (- (length (match-string-no-properties 0)) 4))
+                 (replacement-string (let ((strg ";"))
+                                       (dotimes (i (1- org-header-level) strg)
+                                         (setq strg (concat strg ";"))))))
+            (replace-match replacement-string nil nil nil 2))))))
+
+  (defun outorg-copy-edits-and-exit ()
+    "Replace code-buffer content with (converted) edit-buffer content and
+  kill edit-buffer"
+    (interactive)
+    (if (not buffer-undo-list)
+        ;; edit-buffer not modified at all
+        (progn
+          (move-marker outorg-edit-buffer-point-marker (point))
+          ;; restore window configuration
+          (set-window-configuration
+           outorg-initial-window-config)
+          ;; avoid confirmation prompt when killing the edit buffer
+          (with-current-buffer
+              (marker-buffer outorg-edit-buffer-point-marker)
+            (set-buffer-modified-p nil))
+          (kill-buffer
+           (marker-buffer outorg-edit-buffer-point-marker))
+          (and outorg-code-buffer-read-only-p
+               (setq inhibit-read-only nil))
+          ;; (and (eq major-mode 'message-mode)
+          (and (derived-mode-p 'message-mode)
+               (outorg-prepare-message-mode-buffer-for-sending))
+          (and (eq major-mode 'picolisp-mode)
+               (save-excursion
+                 (save-match-data
+                   (goto-char (point-max))
+                   (re-search-backward
+                    (concat "(" (regexp-quote "********") ")")
+                    nil 'NOERROR))))
+          ;; clean up global vars
+          (outorg-reset-global-vars))
+      ;; edit-buffer modified
+      (widen)
+      ;; propagate changes to associated doc files
+      (when (and outorg-propagate-changes-p
+                 (require 'org-watchdoc nil t))
+        (save-excursion
+          (goto-char (point-min))
+          (org-watchdoc-propagate-changes)))
+      (let ((mode (outorg-get-buffer-mode
+                   (marker-buffer outorg-code-buffer-point-marker))))
+        (and outorg-unindent-active-source-blocks-p
+             (outorg-unindent-active-source-blocks mode))
+        (move-marker outorg-edit-buffer-point-marker (point))
+        (move-marker outorg-edit-buffer-beg-of-subtree-marker
+                     (or (ignore-errors
+                           (save-excursion
+                             (outline-previous-heading)
+                             (point)))
+                         1))
+        ;; special case R-mode
+        (if (eq mode 'ess-mode)
+            (funcall 'R-mode)
+          (ignore-errors (funcall mode))))
+      (outorg-convert-back-to-code)
+      (outorg-save-markers (append outorg-tracked-markers
+                                   outorg-tracked-org-markers))
+      (outorg-replace-code-with-edits)
+      (set-window-configuration
+       outorg-initial-window-config)
+      (goto-char outorg-code-buffer-point-marker)
+      ;; avoid confirmation prompt when killing the edit buffer
+      (with-current-buffer
+          (marker-buffer outorg-edit-buffer-point-marker)
+        (set-buffer-modified-p nil))
+      (kill-buffer
+       (marker-buffer outorg-edit-buffer-point-marker))
+      (and outorg-code-buffer-read-only-p
+           (setq inhibit-read-only nil))
+      (and (derived-mode-p 'message-mode)
+           (outorg-prepare-message-mode-buffer-for-sending))
+      (and (eq major-mode 'picolisp-mode)
+           (save-excursion
+             (save-match-data
+               (goto-char (point-max))
+               (re-search-backward
+                (concat "(" (regexp-quote "********") ")")
+                nil 'NOERROR)))
+           (outorg-prepare-iorg-edit-buffer-for-posting))
+      (outorg-reset-global-vars)))
+
 ;; **** org vsts
   (with-eval-after-load 'org
     (require 'request)
@@ -1475,6 +1749,8 @@ This function is derived from org-export-visible."
 
     (advice-add 'outorg-in-babel-load-languages-p :around 'jdh--outorg-in-babel-load-languages-p)
 
+    ;; (advice-add 'outorg-copy-and-convert :around #'jdh--no-flycheck)
+
     (add-to-list 'outorg-language-name-assocs '(js-mode . js))
     (add-to-list 'outorg-language-name-assocs '(js2-mode . js))
 
@@ -1577,7 +1853,14 @@ This function is derived from org-export-visible."
   (define-derived-mode ts-edit-mode js-mode "ts-mode")
   (define-derived-mode check-mode yaml-mode "check-mode")
 
-  (add-hook 'typescript-mode-hook 'flycheck-mode)
+  (defun jdh--typescript-mode-setup ()
+    (if jdh--outorg-in-edit-p
+        (progn
+          (setq org-descriptive-links nil)
+          (tide-mode -1))
+      (flycheck-mode 1)))
+
+  (add-hook 'typescript-mode-hook 'jdh--typescript-mode-setup)
 
 ;; ** Hacks
   (spacemacs/set-leader-keys
@@ -1595,16 +1878,91 @@ This function is called at the very end of Spacemacs initialization."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(ansi-color-faces-vector
+   [default bold shadow italic underline bold bold-italic bold])
+ '(ansi-color-names-vector
+   ["#073642" "#dc322f" "#859900" "#b58900" "#268bd2" "#d33682" "#2aa198" "#657b83"])
+ '(compilation-message-face (quote default))
+ '(cua-global-mark-cursor-color "#2aa198")
+ '(cua-normal-cursor-color "#839496")
+ '(cua-overwrite-cursor-color "#b58900")
+ '(cua-read-only-cursor-color "#859900")
+ '(evil-want-Y-yank-to-eol nil)
+ '(fci-rule-color "#073642")
  '(flycheck-javascript-flow-args (quote ("--respect-pragma")))
+ '(highlight-changes-colors (quote ("#d33682" "#6c71c4")))
+ '(highlight-symbol-colors
+   (--map
+    (solarized-color-blend it "#002b36" 0.25)
+    (quote
+     ("#b58900" "#2aa198" "#dc322f" "#6c71c4" "#859900" "#cb4b16" "#268bd2"))))
+ '(highlight-symbol-foreground-color "#93a1a1")
+ '(highlight-tail-colors
+   (quote
+    (("#073642" . 0)
+     ("#546E00" . 20)
+     ("#00736F" . 30)
+     ("#00629D" . 50)
+     ("#7B6000" . 60)
+     ("#8B2C02" . 70)
+     ("#93115C" . 85)
+     ("#073642" . 100))))
+ '(hl-bg-colors
+   (quote
+    ("#7B6000" "#8B2C02" "#990A1B" "#93115C" "#3F4D91" "#00629D" "#00736F" "#546E00")))
+ '(hl-fg-colors
+   (quote
+    ("#002b36" "#002b36" "#002b36" "#002b36" "#002b36" "#002b36" "#002b36" "#002b36")))
+ '(hl-sexp-background-color "#121212")
+ '(magit-diff-use-overlays nil)
+ '(nrepl-message-colors
+   (quote
+    ("#dc322f" "#cb4b16" "#b58900" "#546E00" "#B4C342" "#00629D" "#2aa198" "#d33682" "#6c71c4")))
  '(package-selected-packages
    (quote
-    (powerline emojify websocket scala-mode ghc highlight vimish-fold undo-tree skewer-mode deferred haml-mode dash typescript-mode circe outorg company-quickhelp sbt-mode diminish smartparens evil flycheck haskell-mode company yasnippet avy markdown-mode alert projectile magit magit-popup git-commit with-editor hydra helm helm-core async restclient js2-mode s markdown-edit-indirect meghanada groovy-mode groovy-imports pcache gradle-mode fuzzy company-emacs-eclim eclim yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox ox-pandoc outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+    (color-theme-solarized powerline emojify websocket scala-mode ghc highlight vimish-fold undo-tree skewer-mode deferred haml-mode dash typescript-mode circe outorg company-quickhelp sbt-mode diminish smartparens evil flycheck haskell-mode company yasnippet avy markdown-mode alert projectile magit magit-popup git-commit with-editor hydra helm helm-core async restclient js2-mode s markdown-edit-indirect meghanada groovy-mode groovy-imports pcache gradle-mode fuzzy company-emacs-eclim eclim yaml-mode xterm-color ws-butler wolfram-mode winum which-key web-mode web-beautify volatile-highlights vi-tilde-fringe uuidgen use-package typo tide thrift tagedit stan-mode sql-indent spacemacs-theme spaceline solarized-theme smeargle slim-mode slack shell-pop scss-mode scad-mode sass-mode restclient-helm restart-emacs rainbow-delimiters quelpa qml-mode pug-mode psci psc-ide powershell popwin persp-mode pcre2el pass paradox ox-pandoc outshine orgtbl-ascii-plot orgit org-tree-slide org-projectile org-present org-pomodoro org-plus-contrib org-gcal org-download open-junk-file ob-restclient ob-http noflet nodejs-repl nix-mode neotree multi-term move-text mocha mmm-mode matlab-mode material-theme markdown-toc magit-gitflow macrostep lorem-ipsum livid-mode linum-relative link-hint less-css-mode kv julia-mode json-mode js2-refactor js-doc intero insert-shebang info+ indent-guide ido-vertical-mode hungry-delete htmlize hlint-refactor hl-todo hindent highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-purpose helm-projectile helm-nixos-options helm-mode-manager helm-make helm-hoogle helm-gitignore helm-flx helm-descbinds helm-css-scss helm-company helm-chrome helm-c-yasnippet helm-aws helm-ag haskell-snippets google-translate golden-ratio gnuplot gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link git-gutter gh-md fsharp-mode flycheck-pos-tip flycheck-haskell flycheck-flow flx-ido fit-frame fish-mode fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell excorporate evil-visualstar evil-visual-mark-mode evil-vimish-fold evil-unimpaired evil-tutor evil-surround evil-snipe evil-search-highlight-persist evil-numbers evil-mc evil-matchit evil-magit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-commentary evil-args evil-anzu eval-sexp-fu eshell-z eshell-prompt-extras esh-help ensime emmet-mode elisp-slime-nav dumb-jump dizzee dired-narrow define-word csharp-mode company-web company-tern company-statistics company-shell company-restclient company-nixos-options company-ghci company-ghc company-flow company-cabal column-enforce-mode coffee-mode cmm-mode clean-aindent-mode calfw bnfc auto-yasnippet auto-highlight-symbol auto-compile arduino-mode aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line ac-ispell)))
+ '(pos-tip-background-color "#073642")
+ '(pos-tip-foreground-color "#93a1a1")
+ '(psc-ide-add-import-on-completion t t)
+ '(psc-ide-rebuild-on-save nil t)
  '(safe-local-variable-values
    (quote
-    ((projectile-project-compilation-cmd . "nix-build -A site -o gettyped")
-     (projectile-project-test-cmd . "yarn run build-then-test")
+    ((projectile-project-test-cmd . "yarn run build-then-test")
      (projectile-project-compilation-cmd . "yarn run build")
-     (projectile-project-name . "MJS")))))
+     (projectile-project-name . "MJS"))))
+ '(smartrep-mode-line-active-bg (solarized-color-blend "#859900" "#073642" 0.2))
+ '(term-default-bg-color "#002b36")
+ '(term-default-fg-color "#839496")
+ '(vc-annotate-background nil)
+ '(vc-annotate-background-mode nil)
+ '(vc-annotate-color-map
+   (quote
+    ((20 . "#dc322f")
+     (40 . "#cd4500")
+     (60 . "#cd6800")
+     (80 . "#b58900")
+     (100 . "#b78b00")
+     (120 . "#ac8b00")
+     (140 . "#a18b00")
+     (160 . "#958b00")
+     (180 . "#859900")
+     (200 . "#5c8b2e")
+     (220 . "#458b45")
+     (240 . "#2e8b5c")
+     (260 . "#178b73")
+     (280 . "#2aa198")
+     (300 . "#008ba5")
+     (320 . "#008bb2")
+     (340 . "#008bbf")
+     (360 . "#268bd2"))))
+ '(vc-annotate-very-old-color nil)
+ '(weechat-color-list
+   (quote
+    (unspecified "#002b36" "#073642" "#990A1B" "#dc322f" "#546E00" "#859900" "#7B6000" "#b58900" "#00629D" "#268bd2" "#93115C" "#d33682" "#00736F" "#2aa198" "#839496" "#657b83")))
+ '(xterm-color-names
+   ["#073642" "#dc322f" "#859900" "#b58900" "#268bd2" "#d33682" "#2aa198" "#eee8d5"])
+ '(xterm-color-names-bright
+   ["#002b36" "#cb4b16" "#586e75" "#657b83" "#839496" "#6c71c4" "#93a1a1" "#fdf6e3"]))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
